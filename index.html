@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genazzano Rowing — Performance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --deep-blue:   #000739;
+  --mid-blue:    #2062AF;
+  --teal:        #00b395;
+  --gold:        #cc9933;
+  --pink:        #E92B55;
+  --light-grey:  #f1f1f1;
+  --charcoal:    #2e2c32;
+  --white:       #ffffff;
+
+  --bg:          #000e4a;
+  --bg2:         #001166;
+  --bg3:         #001a80;
+  --border:      rgba(204,153,51,0.2);
+  --card:        rgba(255,255,255,0.04);
+  --text:        #e8eef8;
+  --muted:       #8aaccf;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Source Sans 3', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+/* ── shell ── */
+.shell { display: flex; min-height: 100vh; }
+
+/* ── sidebar ── */
+.sidebar {
+  width: 230px;
+  min-width: 230px;
+  background: var(--deep-blue);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.logo-area {
+  padding: 20px 18px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.logo-area img.school-logo {
+  height: 64px;
+  width: auto;
+  object-fit: contain;
+}
+.logo-area img.rowing-logo {
+  height: 44px;
+  width: auto;
+  object-fit: contain;
+  opacity: 0.9;
+}
+.logo-divider {
+  width: 40px;
+  height: 1px;
+  background: var(--gold);
+  opacity: 0.5;
+}
+.logo-title {
+  text-align: center;
+}
+.logo-title h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+}
+.logo-title p {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.nav-section { padding: 14px 10px 6px; }
+.nav-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  text-transform: uppercase;
+  padding: 0 8px;
+  margin-bottom: 6px;
+  opacity: 0.7;
+}
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-family: 'Source Sans 3', Arial, sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+  margin-bottom: 2px;
+}
+.nav-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+.nav-btn.active { background: rgba(204,153,51,0.12); color: var(--gold); border-left: 2px solid var(--gold); padding-left: 8px; }
+.nav-btn svg { width: 15px; height: 15px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 2; }
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 14px;
+  border-top: 1px solid var(--border);
+}
+.sync-btn {
+  width: 100%;
+  padding: 9px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--muted);
+  font-family: 'Source Sans 3', Arial, sans-serif;
+  font-size: 11px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.sync-btn:hover { border-color: var(--gold); color: var(--gold); }
+.sync-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+.status-wrap { margin-top: 8px; text-align: center; }
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--muted); display: inline-block; margin-right: 4px;
+  vertical-align: middle;
+}
+.status-dot.live { background: var(--teal); box-shadow: 0 0 6px var(--teal); animation: pulse 2s infinite; }
+.status-dot.error { background: var(--pink); }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.5} }
+.status-text { font-size: 10px; color: var(--muted); }
+
+/* ── main ── */
+.main { flex: 1; overflow-x: hidden; }
+
+.topbar {
+  padding: 22px 28px 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 18px;
+  margin-bottom: 4px;
+}
+.page-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: -0.01em;
+}
+.page-sub { font-size: 12px; color: var(--muted); margin-top: 3px; letter-spacing: 0.03em; }
+
+.gold-line {
+  width: 36px; height: 2px;
+  background: var(--gold);
+  margin: 6px 0 0;
+  border-radius: 2px;
+}
+
+.content { padding: 18px 28px 48px; }
+
+/* ── cards ── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  opacity: 0.8;
+}
+
+/* ── metrics ── */
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.metric-card {
+  background: rgba(0,7,57,0.6);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.metric-label { font-size: 9px; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+.metric-value { font-size: 22px; font-weight: 600; color: var(--gold); font-family: 'Playfair Display', serif; letter-spacing: -0.01em; }
+.metric-unit { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+/* ── controls ── */
+.controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.ctrl-label { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
+
+select {
+  background: rgba(0,7,57,0.8);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  font-family: 'Source Sans 3', Arial, sans-serif;
+  font-size: 13px;
+  padding: 7px 12px;
+  cursor: pointer;
+  outline: none;
+  max-width: 220px;
+}
+select:focus { border-color: var(--gold); }
+
+.toggle-row { display: flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.tbtn {
+  padding: 7px 13px;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'Source Sans 3', Arial, sans-serif;
+  font-size: 11px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 0.15s;
+}
+.tbtn:last-child { border-right: none; }
+.tbtn.active { background: rgba(204,153,51,0.15); color: var(--gold); }
+.tbtn:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.05); }
+
+/* ── chart ── */
+.chart-wrap { position: relative; width: 100%; }
+
+/* ── compare ── */
+.cmp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+.cmp-col {
+  background: rgba(0,7,57,0.6);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.cmp-col.col-a { border-top: 2px solid var(--teal); }
+.cmp-col.col-b { border-top: 2px solid var(--pink); }
+.cmp-col-label { font-size: 9px; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+.cmp-col-name { font-size: 14px; font-weight: 600; margin-bottom: 12px; font-family: 'Playfair Display', serif; }
+.col-a .cmp-col-name { color: var(--teal); }
+.col-b .cmp-col-name { color: var(--pink); }
+.cmp-stat { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.cmp-stat:last-child { border-bottom: none; }
+.cmp-stat-label { color: var(--muted); }
+.cmp-stat-val { font-weight: 600; }
+
+/* ── AI ── */
+.ai-box {
+  background: rgba(0, 179, 149, 0.07);
+  border: 1px solid rgba(0,179,149,0.25);
+  border-left: 3px solid var(--teal);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-top: 14px;
+  display: none;
+}
+.ai-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.ai-badge { font-size: 9px; letter-spacing: 0.12em; color: var(--teal); text-transform: uppercase; font-weight: 600; }
+.ai-text { font-size: 13px; color: var(--muted); line-height: 1.75; }
+.ai-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid rgba(0,179,149,0.3);
+  border-radius: 7px;
+  color: var(--teal);
+  font-family: 'Source Sans 3', Arial, sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 0.2s;
+  margin-top: 4px;
+}
+.ai-btn:hover { background: rgba(0,179,149,0.1); border-color: var(--teal); }
+.ai-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+/* ── badges ── */
+.badge {
+  display: inline-block; font-size: 9px; letter-spacing: 0.08em;
+  padding: 3px 8px; border-radius: 20px; text-transform: uppercase;
+}
+.badge-race { background: rgba(204,153,51,0.15); color: var(--gold); border: 1px solid rgba(204,153,51,0.3); }
+.badge-training { background: rgba(0,179,149,0.12); color: var(--teal); border: 1px solid rgba(0,179,149,0.25); }
+
+/* ── table ── */
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th {
+  text-align: left; padding: 8px 12px;
+  font-size: 9px; letter-spacing: 0.1em; color: var(--gold);
+  text-transform: uppercase; border-bottom: 1px solid var(--border);
+  font-weight: 400; opacity: 0.8;
+}
+.data-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* ── loading ── */
+.loading-state {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 260px; gap: 14px;
+  color: var(--muted); font-size: 13px; letter-spacing: 0.03em;
+}
+.spinner {
+  width: 28px; height: 28px;
+  border: 2px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── sections ── */
+.section { display: none; }
+.section.active { display: block; }
+
+/* ── diff ── */
+.diff { font-size: 12px; font-weight: 600; }
+.diff.better { color: var(--teal); }
+.diff.worse  { color: var(--pink); }
+.diff.same   { color: var(--muted); }
+
+/* ── legend ── */
+.legend { display: flex; gap: 18px; margin-bottom: 12px; font-size: 11px; }
+.legend-item { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.legend-line { width: 22px; height: 2px; border-radius: 2px; }
+
+@media (max-width: 700px) {
+  .sidebar { display: none; }
+  .topbar, .content { padding-left: 16px; padding-right: 16px; }
+  .cmp-grid { grid-template-columns: 1fr; }
+  .metric-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="logo-area">
+      <img class="school-logo"
+        src="https://drive.google.com/thumbnail?id=1scV2YKG6Y-MvvEe2e-8uEnRVwH-Vt0mJ&sz=w200"
+        alt="Genazzano FCJ College"
+        onerror="this.style.display='none'">
+      <div class="logo-divider"></div>
+      <img class="rowing-logo"
+        src="https://drive.google.com/thumbnail?id=1ShfVRyAIJ-O8KgjCiTn_GKGlA7Sf9sXM&sz=w160"
+        alt="Rowing logo"
+        onerror="this.style.display='none'">
+      <div class="logo-title">
+        <h1>Rowing<br>Performance</h1>
+        <p>Dashboard</p>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Views</div>
+      <button class="nav-btn active" onclick="showSection('race', this)">
+        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Race View
+      </button>
+      <button class="nav-btn" onclick="showSection('compare', this)">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Compare Races
+      </button>
+      <button class="nav-btn" onclick="showSection('training', this)">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Training Log
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="sync-btn" onclick="loadData()">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Sync Now
+      </button>
+      <div class="status-wrap">
+        <span class="status-dot" id="status-dot"></span>
+        <span class="status-text" id="status-text">Not connected</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main">
+
+    <!-- Race View -->
+    <div id="section-race" class="section active">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Race Analysis</div>
+          <div class="gold-line"></div>
+          <div class="page-sub">Per-stroke GPS data — SpeedCoach Pro</div>
+        </div>
+        <div class="controls" style="margin-bottom:0">
+          <span class="ctrl-label">Session:</span>
+          <select id="race-select" onchange="renderRace()"></select>
+        </div>
+      </div>
+      <div class="content">
+        <div id="race-loading" class="loading-state">
+          <div class="spinner"></div>Loading session data...
+        </div>
+        <div id="race-body" style="display:none">
+          <div class="controls">
+            <span class="ctrl-label">Metric:</span>
+            <div class="toggle-row">
+              <button class="tbtn active" id="tb-split" onclick="setMetric('split')">Split /500m</button>
+              <button class="tbtn" id="tb-speed" onclick="setMetric('speed')">Speed</button>
+              <button class="tbtn" id="tb-rate" onclick="setMetric('rate')">Stroke Rate</button>
+              <button class="tbtn" id="tb-ds" onclick="setMetric('ds')">Dist/Stroke</button>
+            </div>
+          </div>
+          <div id="race-metrics" class="metric-grid"></div>
+          <div class="card">
+            <div class="card-title" id="race-chart-title">Speed over distance</div>
+            <div class="chart-wrap" style="height:240px">
+              <canvas id="race-chart" role="img" aria-label="Rowing metric over race distance"></canvas>
+            </div>
+          </div>
+          <button class="ai-btn" onclick="getAI('race')">
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            AI coaching analysis
+          </button>
+          <div class="ai-box" id="ai-race">
+            <div class="ai-header">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <span class="ai-badge">AI Coaching Analysis — Genazzano Rowing</span>
+            </div>
+            <div class="ai-text" id="ai-race-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compare -->
+    <div id="section-compare" class="section">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Race Comparison</div>
+          <div class="gold-line"></div>
+          <div class="page-sub">Head-to-head performance analysis</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="controls">
+          <span class="ctrl-label">Race A:</span>
+          <select id="cmp-a" onchange="renderCompare()"></select>
+          <span class="ctrl-label">Race B:</span>
+          <select id="cmp-b" onchange="renderCompare()"></select>
+          <div class="toggle-row">
+            <button class="tbtn active" id="ctb-split" onclick="setCmpMetric('split')">Split</button>
+            <button class="tbtn" id="ctb-speed" onclick="setCmpMetric('speed')">Speed</button>
+            <button class="tbtn" id="ctb-rate" onclick="setCmpMetric('rate')">Rate</button>
+          </div>
+        </div>
+        <div id="cmp-cols" class="cmp-grid"></div>
+        <div class="card">
+          <div class="card-title" id="cmp-chart-title">Split comparison</div>
+          <div class="legend">
+            <div class="legend-item"><div class="legend-line" style="background:var(--teal)"></div><span id="legend-a">Race A</span></div>
+            <div class="legend-item"><div class="legend-line" style="background:var(--pink);border-top:2px dashed var(--pink);background:none"></div><span id="legend-b">Race B</span></div>
+          </div>
+          <div class="chart-wrap" style="height:240px">
+            <canvas id="cmp-chart" role="img" aria-label="Race comparison chart"></canvas>
+          </div>
+        </div>
+        <button class="ai-btn" onclick="getAI('compare')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          AI comparison analysis
+        </button>
+        <div class="ai-box" id="ai-compare">
+          <div class="ai-header">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span class="ai-badge">AI Race Comparison — Genazzano Rowing</span>
+          </div>
+          <div class="ai-text" id="ai-compare-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Training Log -->
+    <div id="section-training" class="section">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Training Log</div>
+          <div class="gold-line"></div>
+          <div class="page-sub">All sessions — races and training</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="card">
+          <div class="card-title">All sessions</div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Session</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Distance</th>
+                <th>Time</th>
+                <th>Avg Split</th>
+                <th>Avg Rate</th>
+                <th>Strokes</th>
+              </tr>
+            </thead>
+            <tbody id="training-rows"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-title">Average split — all sessions (lower = faster)</div>
+          <div class="chart-wrap" style="height:240px">
+            <canvas id="training-chart" role="img" aria-label="Training split trend across sessions"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── CONFIG — replace with your deployed Apps Script URL ──────
+var APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
+// ────────────────────────────────────────────────────────────
+
+var allSessions  = [];
+var raceSessions = [];
+var raceMetric   = 'split';
+var cmpMetric    = 'split';
+var raceChart    = null;
+var cmpChart     = null;
+var trainChart   = null;
+
+// ── helpers ──────────────────────────────────────────────────
+function parseSplit(s) {
+  if (!s || s === '---') return null;
+  s = s.replace('(', '').replace(')', '');
+  var p = s.split(':');
+  if (p.length === 3) return parseFloat(p[0])*3600 + parseFloat(p[1])*60 + parseFloat(p[2]);
+  if (p.length === 2) return parseFloat(p[0])*60 + parseFloat(p[1]);
+  return null;
+}
+function fmtSplit(secs) {
+  if (secs == null || isNaN(secs)) return '---';
+  var m = Math.floor(secs / 60);
+  var s = (secs % 60);
+  var sf = s < 10 ? '0' + s.toFixed(1) : s.toFixed(1);
+  return m + ':' + sf;
+}
+function fmtDate(str) {
+  if (!str) return '---';
+  var parts = str.split(' ')[0].split('/');
+  if (parts.length === 3) {
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var m = parseInt(parts[0]) - 1;
+    return parts[1] + ' ' + months[m] + ' ' + parts[2];
+  }
+  return str;
+}
+function smooth(arr, w) {
+  w = w || 2;
+  return arr.map(function(v, i, a) {
+    var sl = [];
+    for (var j = Math.max(0, i-w); j <= Math.min(a.length-1, i+w); j++) {
+      if (a[j] != null) sl.push(a[j]);
+    }
+    return sl.length ? sl.reduce(function(s,x){return s+x;}, 0) / sl.length : null;
+  });
+}
+function downsample(arr, max) {
+  max = max || 120;
+  if (arr.length <= max) return arr;
+  var step = Math.ceil(arr.length / max);
+  return arr.filter(function(_, i) { return i % step === 0; });
+}
+function getMetricVals(strokes, metric) {
+  return strokes.map(function(s) {
+    if (metric === 'split') return parseSplit(s.sp);
+    if (metric === 'speed') return s.v;
+    if (metric === 'rate')  return s.r;
+    if (metric === 'ds')    return s.ds;
+    return null;
+  });
+}
+
+// ── status ───────────────────────────────────────────────────
+function setStatus(state, ts) {
+  var dot = document.getElementById('status-dot');
+  var txt = document.getElementById('status-text');
+  dot.className = 'status-dot' + (state === 'live' ? ' live' : state === 'error' ? ' error' : '');
+  if (state === 'live' && ts) {
+    var d = new Date(ts);
+    txt.textContent = 'Synced ' + d.toLocaleTimeString('en-AU', {hour:'2-digit', minute:'2-digit'});
+  } else if (state === 'error') {
+    txt.textContent = 'Connection error';
+  } else {
+    txt.textContent = 'Loading...';
+  }
+}
+
+// ── load data ────────────────────────────────────────────────
+function loadData() {
+  setStatus('loading');
+  fetch(APPS_SCRIPT_URL)
+    .then(function(r) { return r.json(); })
+    .then(function(j) {
+      if (j.status !== 'ok') throw new Error(j.message || 'Error');
+      allSessions  = j.sessions || [];
+      raceSessions = allSessions.filter(function(s) { return s.isRace; });
+      setStatus('live', j.generated);
+      populateSelects();
+      // Render all views after data is ready
+      renderRace();
+      renderCompare();
+      renderTraining();
+      document.getElementById('race-loading').style.display = 'none';
+      document.getElementById('race-body').style.display = 'block';
+    })
+    .catch(function(e) {
+      setStatus('error');
+      document.getElementById('race-loading').innerHTML =
+        '<div style="text-align:center;color:var(--pink)">' +
+        '<div style="font-size:28px;margin-bottom:10px">⚠</div>' +
+        '<div style="font-size:14px">Could not load session data</div>' +
+        '<div style="font-size:11px;color:var(--muted);margin-top:6px">' + e.message + '</div>' +
+        '<div style="font-size:11px;color:var(--muted);margin-top:4px">Check APPS_SCRIPT_URL in index.html</div>' +
+        '</div>';
+    });
+}
+
+function populateSelects() {
+  // Race select: all sessions
+  var raceEl = document.getElementById('race-select');
+  raceEl.innerHTML = '';
+  allSessions.forEach(function(s) {
+    var opt = document.createElement('option');
+    opt.value = s.name;
+    opt.textContent = s.name;
+    raceEl.appendChild(opt);
+  });
+
+  // Compare selects: race sessions only (fall back to all if <2 races)
+  var list = raceSessions.length >= 2 ? raceSessions : allSessions;
+  ['cmp-a', 'cmp-b'].forEach(function(id, idx) {
+    var el = document.getElementById(id);
+    el.innerHTML = '';
+    list.forEach(function(s, i) {
+      var opt = document.createElement('option');
+      opt.value = s.name;
+      opt.textContent = s.name;
+      if (i === idx) opt.selected = true;
+      el.appendChild(opt);
+    });
+  });
+}
+
+// ── race view ────────────────────────────────────────────────
+function setMetric(m) {
+  raceMetric = m;
+  ['split','speed','rate','ds'].forEach(function(k) {
+    document.getElementById('tb-'+k).className = 'tbtn' + (k === m ? ' active' : '');
+  });
+  renderRace();
+}
+
+function renderRace() {
+  if (!allSessions.length) return;
+  var name = document.getElementById('race-select').value;
+  if (!name) return;
+  var sess = null;
+  for (var i = 0; i < allSessions.length; i++) {
+    if (allSessions[i].name === name) { sess = allSessions[i]; break; }
+  }
+  if (!sess) return;
+
+  var sm = sess.summary || {};
+  var badge = sess.isRace
+    ? '<span class="badge badge-race">Race</span>'
+    : '<span class="badge badge-training">Training</span>';
+
+  document.getElementById('race-metrics').innerHTML =
+    '<div class="metric-card"><div class="metric-label">Distance</div><div class="metric-value">' + (sm.totalDistGPS ? sm.totalDistGPS.toFixed(0) : '---') + '</div><div class="metric-unit">metres (GPS)</div></div>' +
+    '<div class="metric-card"><div class="metric-label">Avg Split</div><div class="metric-value" style="font-size:18px">' + fmtSplit(parseSplit(sm.avgSplitGPS)) + '</div><div class="metric-unit">per 500m</div></div>' +
+    '<div class="metric-card"><div class="metric-label">Total Time</div><div class="metric-value" style="font-size:16px">' + (sm.totalTime || '---') + '</div><div class="metric-unit">elapsed</div></div>' +
+    '<div class="metric-card"><div class="metric-label">Avg Rate</div><div class="metric-value">' + (sm.avgStrokeRate ? sm.avgStrokeRate.toFixed(1) : '---') + '</div><div class="metric-unit">strokes / min</div></div>' +
+    '<div class="metric-card"><div class="metric-label">Strokes</div><div class="metric-value">' + (sm.totalStrokes || '---') + '</div><div class="metric-unit">total</div></div>' +
+    '<div class="metric-card"><div class="metric-label">Dist / Stroke</div><div class="metric-value">' + (sm.distPerStrokeGPS ? sm.distPerStrokeGPS.toFixed(1) : '---') + '</div><div class="metric-unit">metres</div></div>';
+
+  var strokes = sess.strokes || [];
+  var rawVals = getMetricVals(strokes, raceMetric);
+  var vals    = smooth(rawVals, 2);
+  var labels  = strokes.map(function(s) { return s.d.toFixed(0); });
+
+  var dLabels = downsample(labels);
+  var dVals   = downsample(vals);
+
+  var metricTitles = { split:'Split /500m (lower = faster)', speed:'Speed (m/s)', rate:'Stroke rate (SPM)', ds:'Distance per stroke (m)' };
+  document.getElementById('race-chart-title').textContent = metricTitles[raceMetric] + ' — ' + name;
+
+  if (raceChart) raceChart.destroy();
+  var ctx = document.getElementById('race-chart').getContext('2d');
+  raceChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dLabels,
+      datasets: [{
+        label: metricTitles[raceMetric],
+        data: dVals,
+        borderColor: '#cc9933',
+        backgroundColor: 'rgba(204,153,51,0.08)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 0,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          ticks: { maxTicksLimit: 8, color:'#8aaccf', font:{size:10}, callback: function(v, i) { return dLabels[i] + 'm'; } },
+          grid: { color:'rgba(255,255,255,0.04)' }
+        },
+        y: {
+          reverse: raceMetric === 'split',
+          ticks: {
+            color:'#8aaccf', font:{size:10},
+            callback: function(v) { return raceMetric === 'split' ? fmtSplit(v) : parseFloat(v).toFixed(1); }
+          },
+          grid: { color:'rgba(255,255,255,0.04)' }
+        }
+      }
+    }
+  });
+}
+
+// ── compare ──────────────────────────────────────────────────
+function setCmpMetric(m) {
+  cmpMetric = m;
+  ['split','speed','rate'].forEach(function(k) {
+    document.getElementById('ctb-'+k).className = 'tbtn' + (k === m ? ' active' : '');
+  });
+  renderCompare();
+}
+
+function renderCompare() {
+  if (!allSessions.length) return;
+  var nameA = document.getElementById('cmp-a').value;
+  var nameB = document.getElementById('cmp-b').value;
+  if (!nameA || !nameB) return;
+
+  var sA = null, sB = null;
+  for (var i = 0; i < allSessions.length; i++) {
+    if (allSessions[i].name === nameA) sA = allSessions[i];
+    if (allSessions[i].name === nameB) sB = allSessions[i];
+  }
+  if (!sA || !sB) return;
+
+  document.getElementById('legend-a').textContent = nameA;
+  document.getElementById('legend-b').textContent = nameB;
+
+  var smA = sA.summary || {}, smB = sB.summary || {};
+  var spA = parseSplit(smA.avgSplitGPS), spB = parseSplit(smB.avgSplitGPS);
+  var diff = (spA && spB) ? spB - spA : null;
+  var diffClass = diff === null ? 'same' : diff < 0 ? 'better' : 'worse';
+  var diffStr = diff === null ? '—' : (diff > 0 ? '+' : '') + fmtSplit(Math.abs(diff));
+
+  document.getElementById('cmp-cols').innerHTML =
+    '<div class="cmp-col col-a">' +
+      '<div class="cmp-col-label">Race A</div>' +
+      '<div class="cmp-col-name">' + nameA + '</div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Distance</span><span class="cmp-stat-val">' + (smA.totalDistGPS ? smA.totalDistGPS.toFixed(0)+'m' : '---') + '</span></div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Total time</span><span class="cmp-stat-val">' + (smA.totalTime||'---') + '</span></div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Avg split</span><span class="cmp-stat-val" style="color:var(--teal)">' + fmtSplit(spA) + '</span></div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Avg rate</span><span class="cmp-stat-val">' + (smA.avgStrokeRate ? smA.avgStrokeRate.toFixed(1)+' SPM' : '---') + '</span></div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Strokes</span><span class="cmp-stat-val">' + (smA.totalStrokes||'---') + '</span></div>' +
+    '</div>' +
+    '<div class="cmp-col col-b">' +
+      '<div class="cmp-col-label">Race B &nbsp;<span class="diff ' + diffClass + '">' + diffStr + '</span></div>' +
+      '<div class="cmp-col-name">' + nameB + '</div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Distance</span><span class="cmp-stat-val">' + (smB.totalDistGPS ? smB.totalDistGPS.toFixed(0)+'m' : '---') + '</span></div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Total time</span><span class="cmp-stat-val">' + (smB.totalTime||'---') + '</span></div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Avg split</span><span class="cmp-stat-val" style="color:var(--pink)">' + fmtSplit(spB) + '</span></div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Avg rate</span><span class="cmp-stat-val">' + (smB.avgStrokeRate ? smB.avgStrokeRate.toFixed(1)+' SPM' : '---') + '</span></div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Strokes</span><span class="cmp-stat-val">' + (smB.totalStrokes||'---') + '</span></div>' +
+    '</div>';
+
+  var vA = smooth(getMetricVals(sA.strokes || [], cmpMetric), 2);
+  var vB = smooth(getMetricVals(sB.strokes || [], cmpMetric), 2);
+  var lA = (sA.strokes||[]).map(function(s){return s.d.toFixed(0);});
+  var lB = (sB.strokes||[]).map(function(s){return s.d.toFixed(0);});
+  var labels = lA.length >= lB.length ? downsample(lA) : downsample(lB);
+  var dvA = downsample(vA), dvB = downsample(vB);
+
+  var mTitles = { split:'Split /500m (lower = faster)', speed:'Speed (m/s)', rate:'Stroke rate (SPM)' };
+  document.getElementById('cmp-chart-title').textContent = mTitles[cmpMetric];
+
+  if (cmpChart) cmpChart.destroy();
+  var ctx2 = document.getElementById('cmp-chart').getContext('2d');
+  cmpChart = new Chart(ctx2, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: nameA, data: dvA, borderColor:'#00b395', fill:false, tension:0.4, pointRadius:0, borderWidth:2 },
+        { label: nameB, data: dvB, borderColor:'#E92B55', fill:false, tension:0.4, pointRadius:0, borderWidth:2, borderDash:[5,4] }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks:{maxTicksLimit:8,color:'#8aaccf',font:{size:10},callback:function(v,i){return labels[i]+'m';}}, grid:{color:'rgba(255,255,255,0.04)'} },
+        y: {
+          reverse: cmpMetric === 'split',
+          ticks:{color:'#8aaccf',font:{size:10},callback:function(v){return cmpMetric==='split'?fmtSplit(v):parseFloat(v).toFixed(1);}},
+          grid:{color:'rgba(255,255,255,0.04)'}
+        }
+      }
+    }
+  });
+}
+
+// ── training ─────────────────────────────────────────────────
+function renderTraining() {
+  if (!allSessions.length) return;
+  var rows = document.getElementById('training-rows');
+  rows.innerHTML = allSessions.map(function(s) {
+    var sm = s.summary || {};
+    var sp = parseSplit(sm.avgSplitGPS);
+    var badge = s.isRace
+      ? '<span class="badge badge-race">Race</span>'
+      : '<span class="badge badge-training">Training</span>';
+    return '<tr>' +
+      '<td>' + s.name + '</td>' +
+      '<td style="color:var(--muted)">' + fmtDate(s.startTime) + '</td>' +
+      '<td>' + badge + '</td>' +
+      '<td>' + (sm.totalDistGPS ? sm.totalDistGPS.toFixed(0)+'m' : '---') + '</td>' +
+      '<td>' + (sm.totalTime||'---') + '</td>' +
+      '<td style="color:var(--gold)">' + fmtSplit(sp) + '</td>' +
+      '<td>' + (sm.avgStrokeRate ? sm.avgStrokeRate.toFixed(1)+' SPM' : '---') + '</td>' +
+      '<td>' + (sm.totalStrokes||'---') + '</td>' +
+    '</tr>';
+  }).join('');
+
+  var valid = allSessions.filter(function(s) { return s.summary && s.summary.avgSplitGPS; });
+  var tLabels = valid.map(function(s) { return s.name.length > 16 ? s.name.slice(0,14)+'…' : s.name; });
+  var tVals   = valid.map(function(s) { return parseSplit(s.summary.avgSplitGPS); });
+  var tColors = valid.map(function(s) { return s.isRace ? '#cc9933' : '#00b395'; });
+
+  if (trainChart) trainChart.destroy();
+  var ctx3 = document.getElementById('training-chart').getContext('2d');
+  trainChart = new Chart(ctx3, {
+    type: 'bar',
+    data: {
+      labels: tLabels,
+      datasets: [{ label:'Avg split', data:tVals, backgroundColor:tColors, borderRadius:5, borderSkipped:false }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend:{ display:false } },
+      scales: {
+        x: { ticks:{color:'#8aaccf',font:{size:10},maxRotation:35}, grid:{display:false} },
+        y: { reverse:true, ticks:{color:'#8aaccf',font:{size:10},callback:function(v){return fmtSplit(v);}}, grid:{color:'rgba(255,255,255,0.04)'} }
+      }
+    }
+  });
+}
+
+// ── AI ───────────────────────────────────────────────────────
+function getAI(mode) {
+  var box  = document.getElementById('ai-' + mode);
+  var txt  = document.getElementById('ai-' + mode + '-text');
+  box.style.display = 'block';
+  txt.textContent = 'Analysing your race data…';
+
+  var prompt = '';
+  if (mode === 'race') {
+    var name = document.getElementById('race-select').value;
+    var sess = null;
+    for (var i = 0; i < allSessions.length; i++) { if (allSessions[i].name === name) { sess = allSessions[i]; break; } }
+    var sm = sess.summary || {};
+    var sp = (sess.strokes||[]).map(function(s){return parseSplit(s.sp);}).filter(function(v){return v != null;});
+    function avg(arr) { return arr.length ? arr.reduce(function(a,b){return a+b;},0)/arr.length : null; }
+    var startSp = sp.slice(0,10), midSp = sp.slice(Math.floor(sp.length/2)-5, Math.floor(sp.length/2)+5), endSp = sp.slice(-10);
+    prompt = 'You are an expert rowing coach at Genazzano FCJ College, a girls school in Melbourne. Analyse this SpeedCoach GPS race data and provide 3-4 specific, actionable coaching insights. Use rowing-specific language.\n\n' +
+      'Race: ' + name + '\n' +
+      'Total distance: ' + (sm.totalDistGPS ? sm.totalDistGPS.toFixed(0) : '?') + 'm\n' +
+      'Total time: ' + (sm.totalTime||'?') + '\n' +
+      'Avg split: ' + fmtSplit(parseSplit(sm.avgSplitGPS)) + ' /500m\n' +
+      'Avg stroke rate: ' + (sm.avgStrokeRate ? sm.avgStrokeRate.toFixed(1) : '?') + ' SPM\n' +
+      'Total strokes: ' + (sm.totalStrokes||'?') + '\n' +
+      'Distance/stroke: ' + (sm.distPerStrokeGPS ? sm.distPerStrokeGPS.toFixed(1) : '?') + 'm\n\n' +
+      'Pacing (split in seconds per 500m):\n' +
+      '- First 10 strokes avg: ' + fmtSplit(avg(startSp)) + '\n' +
+      '- Mid-race avg: ' + fmtSplit(avg(midSp)) + '\n' +
+      '- Final 10 strokes avg: ' + fmtSplit(avg(endSp)) + '\n\n' +
+      'Cover: pacing strategy (positive/negative split?), stroke efficiency, key strengths, and 1-2 specific areas to improve. Write in short paragraphs, no bullet points.';
+
+  } else {
+    var nameA = document.getElementById('cmp-a').value;
+    var nameB = document.getElementById('cmp-b').value;
+    var sA = null, sB = null;
+    for (var i = 0; i < allSessions.length; i++) {
+      if (allSessions[i].name === nameA) sA = allSessions[i];
+      if (allSessions[i].name === nameB) sB = allSessions[i];
+    }
+    var smA = sA.summary||{}, smB = sB.summary||{};
+    prompt = 'You are an expert rowing coach at Genazzano FCJ College. Compare these two race performances and give specific coaching feedback.\n\n' +
+      'Race 1: ' + nameA + '\n' +
+      '- Avg split: ' + fmtSplit(parseSplit(smA.avgSplitGPS)) + ' /500m\n' +
+      '- Avg rate: ' + (smA.avgStrokeRate ? smA.avgStrokeRate.toFixed(1) : '?') + ' SPM\n' +
+      '- Distance/stroke: ' + (smA.distPerStrokeGPS ? smA.distPerStrokeGPS.toFixed(1) : '?') + 'm\n' +
+      '- Total strokes: ' + (smA.totalStrokes||'?') + '\n\n' +
+      'Race 2: ' + nameB + '\n' +
+      '- Avg split: ' + fmtSplit(parseSplit(smB.avgSplitGPS)) + ' /500m\n' +
+      '- Avg rate: ' + (smB.avgStrokeRate ? smB.avgStrokeRate.toFixed(1) : '?') + ' SPM\n' +
+      '- Distance/stroke: ' + (smB.distPerStrokeGPS ? smB.distPerStrokeGPS.toFixed(1) : '?') + 'm\n' +
+      '- Total strokes: ' + (smB.totalStrokes||'?') + '\n\n' +
+      'Identify: what improved, what regressed, and 2 specific recommendations for the next race. Short paragraphs, no bullet points.';
+  }
+
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{ role:'user', content: prompt }]
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(j) {
+    var content = j.content && j.content[0] ? j.content[0].text : 'No response received.';
+    txt.textContent = content;
+  })
+  .catch(function() {
+    txt.textContent = 'Could not connect to AI. Please try again.';
+  });
+}
+
+// ── nav ──────────────────────────────────────────────────────
+function showSection(id, btn) {
+  document.querySelectorAll('.section').forEach(function(el) { el.classList.remove('active'); });
+  document.querySelectorAll('.nav-btn').forEach(function(el) { el.classList.remove('active'); });
+  document.getElementById('section-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+// ── init ─────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
