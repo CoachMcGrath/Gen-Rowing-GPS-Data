@@ -67,6 +67,19 @@ body {
   width: auto;
   object-fit: contain;
 }
+.crest-fallback {
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--deep-blue);
+  font-family: 'Playfair Display', serif;
+  font-size: 30px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
 .logo-area img.rowing-logo {
   height: 44px;
   width: auto;
@@ -385,12 +398,12 @@ select:focus { border-color: var(--gold); }
   <aside class="sidebar">
     <div class="logo-area">
       <img class="school-logo"
-        src="https://drive.google.com/thumbnail?id=1scV2YKG6Y-MvvEe2e-8uEnRVwH-Vt0mJ&sz=w200"
+        src="https://drive.google.com/uc?export=view&id=1scV2YKG6Y-MvvEe2e-8uEnRVwH-Vt0mJ"
         alt="Genazzano FCJ College"
-        onerror="this.style.display='none'">
+        onerror="this.outerHTML='<div class=\'crest-fallback\'>G</div>'">
       <div class="logo-divider"></div>
       <img class="rowing-logo"
-        src="https://drive.google.com/thumbnail?id=1ShfVRyAIJ-O8KgjCiTn_GKGlA7Sf9sXM&sz=w160"
+        src="https://drive.google.com/uc?export=view&id=1ShfVRyAIJ-O8KgjCiTn_GKGlA7Sf9sXM"
         alt="Rowing logo"
         onerror="this.style.display='none'">
       <div class="logo-title">
@@ -449,18 +462,17 @@ select:focus { border-color: var(--gold); }
         </div>
         <div id="race-body" style="display:none">
           <div class="controls">
-            <span class="ctrl-label">Metric:</span>
-            <div class="toggle-row">
-              <button class="tbtn active" id="tb-split" onclick="setMetric('split')">Split /500m</button>
-              <button class="tbtn" id="tb-speed" onclick="setMetric('speed')">Speed</button>
-              <button class="tbtn" id="tb-rate" onclick="setMetric('rate')">Stroke Rate</button>
-              <button class="tbtn" id="tb-ds" onclick="setMetric('ds')">Dist/Stroke</button>
-            </div>
+            <span class="ctrl-label">Display:</span>
+            <button class="tbtn active" id="tb-split" onclick="toggleMetric('split')">Split /500m</button>
+            <button class="tbtn" id="tb-speed" onclick="toggleMetric('speed')">Speed</button>
+            <button class="tbtn" id="tb-rate" onclick="toggleMetric('rate')">Stroke Rate</button>
+            <button class="tbtn" id="tb-ds" onclick="toggleMetric('ds')">Dist/Stroke</button>
           </div>
           <div id="race-metrics" class="metric-grid"></div>
           <div class="card">
-            <div class="card-title" id="race-chart-title">Speed over distance</div>
-            <div class="chart-wrap" style="height:240px">
+            <div class="card-title" id="race-chart-title">Performance over distance</div>
+            <div id="race-legend" class="legend" style="margin-bottom:12px"></div>
+            <div class="chart-wrap" style="height:260px">
               <canvas id="race-chart" role="img" aria-label="Rowing metric over race distance"></canvas>
             </div>
           </div>
@@ -494,20 +506,17 @@ select:focus { border-color: var(--gold); }
           <select id="cmp-a" onchange="renderCompare()"></select>
           <span class="ctrl-label">Race B:</span>
           <select id="cmp-b" onchange="renderCompare()"></select>
-          <div class="toggle-row">
-            <button class="tbtn active" id="ctb-split" onclick="setCmpMetric('split')">Split</button>
-            <button class="tbtn" id="ctb-speed" onclick="setCmpMetric('speed')">Speed</button>
-            <button class="tbtn" id="ctb-rate" onclick="setCmpMetric('rate')">Rate</button>
-          </div>
+            <span class="ctrl-label">Display:</span>
+            <button class="tbtn active" id="ctb-split" onclick="toggleCmpMetric('split')">Split</button>
+            <button class="tbtn" id="ctb-speed" onclick="toggleCmpMetric('speed')">Speed</button>
+            <button class="tbtn" id="ctb-rate" onclick="toggleCmpMetric('rate')">Rate</button>
+            <button class="tbtn" id="ctb-ds" onclick="toggleCmpMetric('ds')">Dist/Stroke</button>
         </div>
         <div id="cmp-cols" class="cmp-grid"></div>
         <div class="card">
-          <div class="card-title" id="cmp-chart-title">Split comparison</div>
-          <div class="legend">
-            <div class="legend-item"><div class="legend-line" style="background:var(--teal)"></div><span id="legend-a">Race A</span></div>
-            <div class="legend-item"><div class="legend-line" style="background:var(--pink);border-top:2px dashed var(--pink);background:none"></div><span id="legend-b">Race B</span></div>
-          </div>
-          <div class="chart-wrap" style="height:240px">
+          <div class="card-title" id="cmp-chart-title">Race comparison</div>
+          <div id="cmp-legend" class="legend" style="margin-bottom:12px"></div>
+          <div class="chart-wrap" style="height:260px">
             <canvas id="cmp-chart" role="img" aria-label="Race comparison chart"></canvas>
           </div>
         </div>
@@ -570,13 +579,27 @@ select:focus { border-color: var(--gold); }
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxVhlyF6Np_94HZNwE6ONQ1QtJoaQmvRZxygRDxRCEufGYn6KVEdb3Qm_yfZ0hJZ89l/exec';
 // ────────────────────────────────────────────────────────────
 
-var allSessions  = [];
-var raceSessions = [];
-var raceMetric   = 'split';
-var cmpMetric    = 'split';
-var raceChart    = null;
-var cmpChart     = null;
-var trainChart   = null;
+var allSessions   = [];
+var raceSessions  = [];
+var activeMetrics = { split: true, speed: false, rate: false, ds: false };
+var activeCmpMetrics = { split: true, speed: false, rate: false, ds: false };
+var raceChart     = null;
+var cmpChart      = null;
+var trainChart    = null;
+
+// Metric config: label, colour, right-axis, padding, reverse
+var METRIC_CFG = {
+  split: { label: 'Split /500m', color: '#cc9933', yid: 'yLeft',  pad: 5,    reverse: true,  fmt: function(v){ return fmtSplit(v); } },
+  speed: { label: 'Speed (m/s)', color: '#00b395', yid: 'yRight', pad: 0.2,  reverse: false, fmt: function(v){ return v.toFixed(2); } },
+  rate:  { label: 'Rate (SPM)',  color: '#E92B55', yid: 'yRight', pad: 2,    reverse: false, fmt: function(v){ return v.toFixed(1); } },
+  ds:    { label: 'Dist/Stroke (m)', color: '#a09f9f', yid: 'yRight', pad: 0.3, reverse: false, fmt: function(v){ return v.toFixed(2); } }
+};
+// If split is active, non-split go right; if only non-split, they share left
+function getYId(metric, activeMap) {
+  var splitOn = activeMap.split;
+  if (metric === 'split') return 'yLeft';
+  return splitOn ? 'yRight' : 'yLeft';
+}
 
 // ── helpers ──────────────────────────────────────────────────
 function parseSplit(s) {
@@ -648,31 +671,42 @@ function setStatus(state, ts) {
 // ── load data ────────────────────────────────────────────────
 function loadData() {
   setStatus('loading');
-  fetch(APPS_SCRIPT_URL)
-    .then(function(r) { return r.json(); })
-    .then(function(j) {
+  // Use JSONP to avoid CORS issues with Apps Script
+  window._rowingDataCallback = function(j) {
+    try {
       if (j.status !== 'ok') throw new Error(j.message || 'Error');
       allSessions  = j.sessions || [];
       raceSessions = allSessions.filter(function(s) { return s.isRace; });
       setStatus('live', j.generated);
       populateSelects();
-      // Render all views after data is ready
       renderRace();
       renderCompare();
       renderTraining();
       document.getElementById('race-loading').style.display = 'none';
       document.getElementById('race-body').style.display = 'block';
-    })
-    .catch(function(e) {
+    } catch(e) {
       setStatus('error');
       document.getElementById('race-loading').innerHTML =
         '<div style="text-align:center;color:var(--pink)">' +
-        '<div style="font-size:28px;margin-bottom:10px">⚠</div>' +
+        '<div style="font-size:28px;margin-bottom:10px">&#9888;</div>' +
         '<div style="font-size:14px">Could not load session data</div>' +
         '<div style="font-size:11px;color:var(--muted);margin-top:6px">' + e.message + '</div>' +
-        '<div style="font-size:11px;color:var(--muted);margin-top:4px">Check APPS_SCRIPT_URL in index.html</div>' +
         '</div>';
-    });
+    }
+  };
+  // Inject script tag for JSONP
+  var script = document.createElement('script');
+  script.onerror = function() {
+    setStatus('error');
+    document.getElementById('race-loading').innerHTML =
+      '<div style="text-align:center;color:var(--pink)">' +
+      '<div style="font-size:28px;margin-bottom:10px">&#9888;</div>' +
+      '<div style="font-size:14px">Could not reach Apps Script</div>' +
+      '<div style="font-size:11px;color:var(--muted);margin-top:6px">Check the URL is deployed and set to Anyone</div>' +
+      '</div>';
+  };
+  script.src = APPS_SCRIPT_URL + '?callback=_rowingDataCallback';
+  document.head.appendChild(script);
 }
 
 function populateSelects() {
@@ -701,12 +735,137 @@ function populateSelects() {
   });
 }
 
-// ── race view ────────────────────────────────────────────────
-function setMetric(m) {
-  raceMetric = m;
-  ['split','speed','rate','ds'].forEach(function(k) {
-    document.getElementById('tb-'+k).className = 'tbtn' + (k === m ? ' active' : '');
+// ── helpers: axis range ──────────────────────────────────────
+function axisRange(vals, pad, reverse) {
+  var clean = vals.filter(function(v){ return v != null && !isNaN(v); });
+  if (!clean.length) return {};
+  var mn = Math.min.apply(null, clean);
+  var mx = Math.max.apply(null, clean);
+  return reverse
+    ? { min: mn - pad, max: mx + pad }
+    : { min: mn - pad, max: mx + pad };
+}
+
+// ── helpers: 250m x-axis labels ─────────────────────────────
+function make250Labels(strokes) {
+  if (!strokes.length) return { labels:[], indices:[] };
+  var maxDist = strokes[strokes.length-1].d;
+  var ticks = [];
+  for (var d = 0; d <= maxDist + 249; d += 250) {
+    if (d <= maxDist) ticks.push(d);
+  }
+  // For each tick, find the stroke index closest to that distance
+  var labels = [], indices = [];
+  ticks.forEach(function(t) {
+    var best = 0, bestDiff = Infinity;
+    for (var i = 0; i < strokes.length; i++) {
+      var diff = Math.abs(strokes[i].d - t);
+      if (diff < bestDiff) { bestDiff = diff; best = i; }
+    }
+    labels.push(t);
+    indices.push(best);
   });
+  return { labels: labels, indices: indices };
+}
+
+function buildXLabels(strokes) {
+  // Returns array of length strokes.length; only 250m marks get a label, rest ''
+  var info = make250Labels(strokes);
+  var result = strokes.map(function(){ return ''; });
+  info.indices.forEach(function(idx, i){ result[idx] = info.labels[i] + 'm'; });
+  return result;
+}
+
+// ── helpers: build datasets for a session ────────────────────
+function buildDatasets(strokes, activeMap, namePrefix, dashed) {
+  var ds = [];
+  ['split','speed','rate','ds'].forEach(function(m) {
+    if (!activeMap[m]) return;
+    var cfg = METRIC_CFG[m];
+    var raw = smooth(getMetricVals(strokes, m), 2);
+    var color = cfg.color;
+    ds.push({
+      label: namePrefix ? namePrefix + ' — ' + cfg.label : cfg.label,
+      data: raw,
+      borderColor: color,
+      backgroundColor: 'transparent',
+      fill: false,
+      tension: 0.4,
+      pointRadius: 0,
+      borderWidth: 2,
+      borderDash: dashed ? [5,4] : [],
+      yAxisID: getYId(m, activeMap)
+    });
+  });
+  return ds;
+}
+
+// ── helpers: build scales ────────────────────────────────────
+function buildScales(allDatasets, strokes, activeMap) {
+  var leftMetrics  = ['split','speed','rate','ds'].filter(function(m){ return activeMap[m] && getYId(m,activeMap)==='yLeft'; });
+  var rightMetrics = ['split','speed','rate','ds'].filter(function(m){ return activeMap[m] && getYId(m,activeMap)==='yRight'; });
+
+  function scaleFor(metrics, position, showGrid) {
+    if (!metrics.length) return null;
+    // Gather all vals for these metrics from all datasets
+    var allVals = [];
+    allDatasets.forEach(function(ds) {
+      var m = null;
+      ['split','speed','rate','ds'].forEach(function(k){ if (ds.label && ds.label.indexOf(METRIC_CFG[k].label)>=0) m=k; });
+      if (m && metrics.indexOf(m)>=0) allVals = allVals.concat(ds.data.filter(function(v){return v!=null&&!isNaN(v);}));
+    });
+    var pad = METRIC_CFG[metrics[0]].pad;
+    var rev = METRIC_CFG[metrics[0]].reverse;
+    var mn = Math.min.apply(null, allVals) - pad;
+    var mx = Math.max.apply(null, allVals) + pad;
+    var primaryM = metrics[0];
+    return {
+      position: position,
+      reverse: rev,
+      min: mn, max: mx,
+      ticks: {
+        color:'#8aaccf', font:{size:10},
+        callback: function(v){ return METRIC_CFG[primaryM].fmt(v); }
+      },
+      grid: showGrid ? {color:'rgba(255,255,255,0.04)'} : {display:false}
+    };
+  }
+
+  var scales = {
+    x: {
+      ticks: {
+        color:'#8aaccf', font:{size:10},
+        callback: function(v, i) {
+          var lbl = xLabels[i];
+          return lbl !== '' ? lbl : null;
+        },
+        maxRotation: 0,
+        autoSkip: false
+      },
+      grid: { color:'rgba(255,255,255,0.04)' }
+    }
+  };
+
+  var ls = scaleFor(leftMetrics, 'left', true);
+  if (ls) scales['yLeft'] = ls;
+  var rs = scaleFor(rightMetrics, 'right', false);
+  if (rs) scales['yRight'] = rs;
+
+  return scales;
+}
+
+// global so callback can access
+var xLabels = [];
+
+// ── race view ────────────────────────────────────────────────
+function toggleMetric(m) {
+  // Must keep at least one active
+  var nowOn = !activeMetrics[m];
+  var anyOther = false;
+  ['split','speed','rate','ds'].forEach(function(k){ if (k!==m && activeMetrics[k]) anyOther=true; });
+  if (!nowOn && !anyOther) return; // prevent deselecting last
+  activeMetrics[m] = nowOn;
+  document.getElementById('tb-'+m).className = 'tbtn' + (nowOn ? ' active' : '');
   renderRace();
 }
 
@@ -721,10 +880,6 @@ function renderRace() {
   if (!sess) return;
 
   var sm = sess.summary || {};
-  var badge = sess.isRace
-    ? '<span class="badge badge-race">Race</span>'
-    : '<span class="badge badge-training">Training</span>';
-
   document.getElementById('race-metrics').innerHTML =
     '<div class="metric-card"><div class="metric-label">Distance</div><div class="metric-value">' + (sm.totalDistGPS ? sm.totalDistGPS.toFixed(0) : '---') + '</div><div class="metric-unit">metres (GPS)</div></div>' +
     '<div class="metric-card"><div class="metric-label">Avg Split</div><div class="metric-value" style="font-size:18px">' + fmtSplit(parseSplit(sm.avgSplitGPS)) + '</div><div class="metric-unit">per 500m</div></div>' +
@@ -734,61 +889,42 @@ function renderRace() {
     '<div class="metric-card"><div class="metric-label">Dist / Stroke</div><div class="metric-value">' + (sm.distPerStrokeGPS ? sm.distPerStrokeGPS.toFixed(1) : '---') + '</div><div class="metric-unit">metres</div></div>';
 
   var strokes = sess.strokes || [];
-  var rawVals = getMetricVals(strokes, raceMetric);
-  var vals    = smooth(rawVals, 2);
-  var labels  = strokes.map(function(s) { return s.d.toFixed(0); });
+  xLabels = buildXLabels(strokes);
+  var datasets = buildDatasets(strokes, activeMetrics, '', false);
+  var scales   = buildScales(datasets, strokes, activeMetrics);
 
-  var dLabels = downsample(labels);
-  var dVals   = downsample(vals);
-
-  var metricTitles = { split:'Split /500m (lower = faster)', speed:'Speed (m/s)', rate:'Stroke rate (SPM)', ds:'Distance per stroke (m)' };
-  document.getElementById('race-chart-title').textContent = metricTitles[raceMetric] + ' — ' + name;
+  // Build legend
+  var legendHtml = '';
+  ['split','speed','rate','ds'].forEach(function(m){
+    if (!activeMetrics[m]) return;
+    var cfg = METRIC_CFG[m];
+    legendHtml += '<div class="legend-item"><div class="legend-line" style="background:'+cfg.color+'"></div><span>'+cfg.label+'</span></div>';
+  });
+  document.getElementById('race-legend').innerHTML = legendHtml;
+  document.getElementById('race-chart-title').textContent = name;
 
   if (raceChart) raceChart.destroy();
   var ctx = document.getElementById('race-chart').getContext('2d');
   raceChart = new Chart(ctx, {
     type: 'line',
-    data: {
-      labels: dLabels,
-      datasets: [{
-        label: metricTitles[raceMetric],
-        data: dVals,
-        borderColor: '#cc9933',
-        backgroundColor: 'rgba(204,153,51,0.08)',
-        fill: true,
-        tension: 0.4,
-        pointRadius: 0,
-        borderWidth: 2
-      }]
-    },
+    data: { labels: xLabels, datasets: datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: { legend: { display: false } },
-      scales: {
-        x: {
-          ticks: { maxTicksLimit: 8, color:'#8aaccf', font:{size:10}, callback: function(v, i) { return dLabels[i] + 'm'; } },
-          grid: { color:'rgba(255,255,255,0.04)' }
-        },
-        y: {
-          reverse: raceMetric === 'split',
-          ticks: {
-            color:'#8aaccf', font:{size:10},
-            callback: function(v) { return raceMetric === 'split' ? fmtSplit(v) : parseFloat(v).toFixed(1); }
-          },
-          grid: { color:'rgba(255,255,255,0.04)' }
-        }
-      }
+      scales: scales
     }
   });
 }
 
 // ── compare ──────────────────────────────────────────────────
-function setCmpMetric(m) {
-  cmpMetric = m;
-  ['split','speed','rate'].forEach(function(k) {
-    document.getElementById('ctb-'+k).className = 'tbtn' + (k === m ? ' active' : '');
-  });
+function toggleCmpMetric(m) {
+  var nowOn = !activeCmpMetrics[m];
+  var anyOther = false;
+  ['split','speed','rate','ds'].forEach(function(k){ if (k!==m && activeCmpMetrics[k]) anyOther=true; });
+  if (!nowOn && !anyOther) return;
+  activeCmpMetrics[m] = nowOn;
+  document.getElementById('ctb-'+m).className = 'tbtn' + (nowOn ? ' active' : '');
   renderCompare();
 }
 
@@ -804,9 +940,6 @@ function renderCompare() {
     if (allSessions[i].name === nameB) sB = allSessions[i];
   }
   if (!sA || !sB) return;
-
-  document.getElementById('legend-a').textContent = nameA;
-  document.getElementById('legend-b').textContent = nameB;
 
   var smA = sA.summary || {}, smB = sB.summary || {};
   var spA = parseSplit(smA.avgSplitGPS), spB = parseSplit(smB.avgSplitGPS);
@@ -834,39 +967,60 @@ function renderCompare() {
       '<div class="cmp-stat"><span class="cmp-stat-label">Strokes</span><span class="cmp-stat-val">' + (smB.totalStrokes||'---') + '</span></div>' +
     '</div>';
 
-  var vA = smooth(getMetricVals(sA.strokes || [], cmpMetric), 2);
-  var vB = smooth(getMetricVals(sB.strokes || [], cmpMetric), 2);
-  var lA = (sA.strokes||[]).map(function(s){return s.d.toFixed(0);});
-  var lB = (sB.strokes||[]).map(function(s){return s.d.toFixed(0);});
-  var labels = lA.length >= lB.length ? downsample(lA) : downsample(lB);
-  var dvA = downsample(vA), dvB = downsample(vB);
+  // Use the longer race for x-axis labels
+  var strokesA = sA.strokes || [];
+  var strokesB = sB.strokes || [];
+  var xBase = strokesA.length >= strokesB.length ? strokesA : strokesB;
+  xLabels = buildXLabels(xBase);
 
-  var mTitles = { split:'Split /500m (lower = faster)', speed:'Speed (m/s)', rate:'Stroke rate (SPM)' };
-  document.getElementById('cmp-chart-title').textContent = mTitles[cmpMetric];
+  // Build datasets — Race A solid, Race B dashed
+  // We need both to share the same x-label length; pad shorter arrays with nulls
+  var dsA = buildDatasets(strokesA, activeCmpMetrics, nameA, false);
+  var dsB = buildDatasets(strokesB, activeCmpMetrics, nameB, true);
+
+  // Pad shorter datasets to match xLabels length
+  var targetLen = xLabels.length;
+  function padDs(ds) {
+    ds.forEach(function(d){
+      while (d.data.length < targetLen) d.data.push(null);
+    });
+    return ds;
+  }
+  padDs(dsA); padDs(dsB);
+
+  // Override colours: Race B gets slightly different shades
+  var CMP_COLORS_B = { split:'#f5a623', speed:'#00e0bc', rate:'#ff6b8a', ds:'#c8c7c7' };
+  dsB.forEach(function(d){
+    ['split','speed','rate','ds'].forEach(function(m){
+      if (d.label.indexOf(METRIC_CFG[m].label) >= 0) d.borderColor = CMP_COLORS_B[m];
+    });
+  });
+
+  var allDs = dsA.concat(dsB);
+  var scales = buildScales(allDs, xBase, activeCmpMetrics);
+
+  // Build legend
+  var legendHtml = '';
+  ['split','speed','rate','ds'].forEach(function(m){
+    if (!activeCmpMetrics[m]) return;
+    var cfg = METRIC_CFG[m];
+    legendHtml +=
+      '<div class="legend-item"><div class="legend-line" style="background:'+cfg.color+'"></div><span style="color:var(--teal)">'+nameA+'</span> <span style="color:var(--muted)">'+cfg.label+'</span></div>' +
+      '<div class="legend-item"><div class="legend-line" style="border-top:2px dashed '+CMP_COLORS_B[m]+';background:none"></div><span style="color:var(--pink)">'+nameB+'</span></div>';
+  });
+  document.getElementById('cmp-legend').innerHTML = legendHtml;
+  document.getElementById('cmp-chart-title').textContent = nameA + ' vs ' + nameB;
 
   if (cmpChart) cmpChart.destroy();
   var ctx2 = document.getElementById('cmp-chart').getContext('2d');
   cmpChart = new Chart(ctx2, {
     type: 'line',
-    data: {
-      labels: labels,
-      datasets: [
-        { label: nameA, data: dvA, borderColor:'#00b395', fill:false, tension:0.4, pointRadius:0, borderWidth:2 },
-        { label: nameB, data: dvB, borderColor:'#E92B55', fill:false, tension:0.4, pointRadius:0, borderWidth:2, borderDash:[5,4] }
-      ]
-    },
+    data: { labels: xLabels, datasets: allDs },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks:{maxTicksLimit:8,color:'#8aaccf',font:{size:10},callback:function(v,i){return labels[i]+'m';}}, grid:{color:'rgba(255,255,255,0.04)'} },
-        y: {
-          reverse: cmpMetric === 'split',
-          ticks:{color:'#8aaccf',font:{size:10},callback:function(v){return cmpMetric==='split'?fmtSplit(v):parseFloat(v).toFixed(1);}},
-          grid:{color:'rgba(255,255,255,0.04)'}
-        }
-      }
+      scales: scales
     }
   });
 }
