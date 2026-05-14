@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genazzano Rowing — Performance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --deep-blue:   #000739;
+  --mid-blue:    #2062AF;
+  --teal:        #00b395;
+  --gold:        #cc9933;
+  --pink:        #E92B55;
+  --light-grey:  #f1f1f1;
+  --charcoal:    #2e2c32;
+  --white:       #ffffff;
+
+  --bg:          #000e4a;
+  --bg2:         #001166;
+  --bg3:         #001a80;
+  --border:      rgba(204,153,51,0.2);
+  --card:        rgba(255,255,255,0.04);
+  --text:        #e8eef8;
+  --muted:       #8aaccf;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Source Sans 3', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+/* ── shell ── */
+.shell { display: flex; min-height: 100vh; }
+
+/* ── sidebar ── */
+.sidebar {
+  width: 230px;
+  min-width: 230px;
+  background: var(--deep-blue);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.logo-area {
+  padding: 20px 18px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.logo-area img.school-logo {
+  height: 64px;
+  width: auto;
+  object-fit: contain;
+}
+.crest-fallback {
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--deep-blue);
+  font-family: 'Playfair Display', serif;
+  font-size: 30px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.logo-area img.rowing-logo {
+  height: 44px;
+  width: auto;
+  object-fit: contain;
+  opacity: 0.9;
+}
+.logo-divider {
+  width: 40px;
+  height: 1px;
+  background: var(--gold);
+  opacity: 0.5;
+}
+.logo-title {
+  text-align: center;
+}
+.logo-title h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+}
+.logo-title p {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.nav-section { padding: 14px 10px 6px; }
+.nav-label {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  text-transform: uppercase;
+  padding: 0 8px;
+  margin-bottom: 6px;
+  opacity: 0.7;
+}
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-family: 'Source Sans 3', Arial, sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+  margin-bottom: 2px;
+}
+.nav-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+.nav-btn.active { background: rgba(204,153,51,0.12); color: var(--gold); border-left: 2px solid var(--gold); padding-left: 8px; }
+.nav-btn svg { width: 15px; height: 15px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 2; }
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 14px;
+  border-top: 1px solid var(--border);
+}
+.sync-btn {
+  width: 100%;
+  padding: 9px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--muted);
+  font-family: 'Source Sans 3', Arial, sans-serif;
+  font-size: 11px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.sync-btn:hover { border-color: var(--gold); color: var(--gold); }
+.sync-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+.status-wrap { margin-top: 8px; text-align: center; }
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--muted); display: inline-block; margin-right: 4px;
+  vertical-align: middle;
+}
+.status-dot.live { background: var(--teal); box-shadow: 0 0 6px var(--teal); animation: pulse 2s infinite; }
+.status-dot.error { background: var(--pink); }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.5} }
+.status-text { font-size: 10px; color: var(--muted); }
+
+/* ── main ── */
+.main { flex: 1; overflow-x: hidden; }
+
+.topbar {
+  padding: 22px 28px 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 18px;
+  margin-bottom: 4px;
+}
+.page-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: -0.01em;
+}
+.page-sub { font-size: 12px; color: var(--muted); margin-top: 3px; letter-spacing: 0.03em; }
+
+.gold-line {
+  width: 36px; height: 2px;
+  background: var(--gold);
+  margin: 6px 0 0;
+  border-radius: 2px;
+}
+
+.content { padding: 18px 28px 48px; }
+
+/* ── cards ── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  opacity: 0.8;
+}
+
+/* ── metrics ── */
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.metric-card {
+  background: rgba(0,7,57,0.6);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.metric-label { font-size: 9px; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+.metric-value { font-size: 22px; font-weight: 600; color: var(--gold); font-family: 'Playfair Display', serif; letter-spacing: -0.01em; }
+.metric-unit { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+/* ── controls ── */
+.controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.ctrl-label { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
+
+select {
+  background: rgba(0,7,57,0.8);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  font-family: 'Source Sans 3', Arial, sans-serif;
+  font-size: 13px;
+  padding: 7px 12px;
+  cursor: pointer;
+  outline: none;
+  max-width: 220px;
+}
+select:focus { border-color: var(--gold); }
+
+.toggle-row { display: flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.tbtn {
+  padding: 7px 13px;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'Source Sans 3', Arial, sans-serif;
+  font-size: 11px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 0.15s;
+}
+.tbtn:last-child { border-right: none; }
+.tbtn.active { background: rgba(204,153,51,0.15); color: var(--gold); }
+.tbtn:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.05); }
+
+/* ── chart ── */
+.chart-wrap { position: relative; width: 100%; }
+
+/* ── compare ── */
+.cmp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+.cmp-col {
+  background: rgba(0,7,57,0.6);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.cmp-col.col-a { border-top: 2px solid var(--teal); }
+.cmp-col.col-b { border-top: 2px solid var(--pink); }
+.cmp-col-label { font-size: 9px; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+.cmp-col-name { font-size: 14px; font-weight: 600; margin-bottom: 12px; font-family: 'Playfair Display', serif; }
+.col-a .cmp-col-name { color: var(--teal); }
+.col-b .cmp-col-name { color: var(--pink); }
+.cmp-stat { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.cmp-stat:last-child { border-bottom: none; }
+.cmp-stat-label { color: var(--muted); }
+.cmp-stat-val { font-weight: 600; }
+
+/* ── AI ── */
+.ai-box {
+  background: rgba(0, 179, 149, 0.07);
+  border: 1px solid rgba(0,179,149,0.25);
+  border-left: 3px solid var(--teal);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-top: 14px;
+  display: none;
+}
+.ai-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.ai-badge { font-size: 9px; letter-spacing: 0.12em; color: var(--teal); text-transform: uppercase; font-weight: 600; }
+.ai-text { font-size: 13px; color: var(--muted); line-height: 1.75; }
+.ai-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid rgba(0,179,149,0.3);
+  border-radius: 7px;
+  color: var(--teal);
+  font-family: 'Source Sans 3', Arial, sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 0.2s;
+  margin-top: 4px;
+}
+.ai-btn:hover { background: rgba(0,179,149,0.1); border-color: var(--teal); }
+.ai-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+/* ── badges ── */
+.badge {
+  display: inline-block; font-size: 9px; letter-spacing: 0.08em;
+  padding: 3px 8px; border-radius: 20px; text-transform: uppercase;
+}
+.badge-race { background: rgba(204,153,51,0.15); color: var(--gold); border: 1px solid rgba(204,153,51,0.3); }
+.badge-training { background: rgba(0,179,149,0.12); color: var(--teal); border: 1px solid rgba(0,179,149,0.25); }
+
+/* ── table ── */
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th {
+  text-align: left; padding: 8px 12px;
+  font-size: 9px; letter-spacing: 0.1em; color: var(--gold);
+  text-transform: uppercase; border-bottom: 1px solid var(--border);
+  font-weight: 400; opacity: 0.8;
+}
+.data-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* ── loading ── */
+.loading-state {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 260px; gap: 14px;
+  color: var(--muted); font-size: 13px; letter-spacing: 0.03em;
+}
+.spinner {
+  width: 28px; height: 28px;
+  border: 2px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── sections ── */
+.section { display: none; }
+.section.active { display: block; }
+
+/* ── diff ── */
+.diff { font-size: 12px; font-weight: 600; }
+.diff.better { color: var(--teal); }
+.diff.worse  { color: var(--pink); }
+.diff.same   { color: var(--muted); }
+
+/* ── legend ── */
+.legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 11px; }
+.legend-item { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.legend-line { width: 22px; height: 2px; border-radius: 2px; }
+
+/* ── scale controls ── */
+.scale-controls {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 7px;
+  border: 1px solid var(--border);
+}
+.scale-controls input[type=number] {
+  background: rgba(0,7,57,0.8);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--gold);
+  font-family: 'Source Sans 3', Arial, sans-serif;
+  font-size: 12px;
+  padding: 4px 6px;
+  text-align: center;
+}
+.scale-controls input[type=number]:focus { border-color: var(--gold); outline: none; }
+
+@media (max-width: 700px) {
+  .sidebar { display: none; }
+  .topbar, .content { padding-left: 16px; padding-right: 16px; }
+  .cmp-grid { grid-template-columns: 1fr; }
+  .metric-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="logo-area">
+      <img class="school-logo"
+        src="https://drive.google.com/uc?export=view&id=1BiSQeDh0BuNgH-141DwfgQJ9cUg7grPj"
+        alt="Genazzano FCJ College"
+        onerror="this.outerHTML='<div class=\'crest-fallback\'>G</div>'">
+      <div class="logo-divider"></div>
+      <img class="rowing-logo"
+        src="https://drive.google.com/uc?export=view&id=1ShfVRyAIJ-O8KgjCiTn_GKGlA7Sf9sXM"
+        alt="Rowing logo"
+        onerror="this.style.display='none'">
+      <div class="logo-title">
+        <h1>Rowing<br>Performance</h1>
+        <p>Dashboard</p>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Views</div>
+      <button class="nav-btn active" onclick="showSection('race', this)">
+        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Race View
+      </button>
+      <button class="nav-btn" onclick="showSection('compare', this)">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Compare Races
+      </button>
+      <button class="nav-btn" onclick="showSection('training', this)">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Training Log
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="sync-btn" onclick="loadData()">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Sync Now
+      </button>
+      <div class="status-wrap">
+        <span class="status-dot" id="status-dot"></span>
+        <span class="status-text" id="status-text">Not connected</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main">
+
+    <!-- Race View -->
+    <div id="section-race" class="section active">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Race Analysis</div>
+          <div class="gold-line"></div>
+          <div class="page-sub">Per-stroke GPS data — SpeedCoach Pro</div>
+        </div>
+        <div class="controls" style="margin-bottom:0">
+          <span class="ctrl-label">Session:</span>
+          <select id="race-select" onchange="renderRace()"></select>
+        </div>
+      </div>
+      <div class="content">
+        <div id="race-loading" class="loading-state">
+          <div class="spinner"></div>Loading session data...
+        </div>
+        <div id="race-body" style="display:none">
+          <div class="controls">
+            <span class="ctrl-label">Display:</span>
+            <button class="tbtn active" id="tb-split" onclick="toggleMetric('split')">Split /500m</button>
+            <button class="tbtn" id="tb-speed" onclick="toggleMetric('speed')">Speed</button>
+            <button class="tbtn" id="tb-rate" onclick="toggleMetric('rate')">Stroke Rate</button>
+            <button class="tbtn" id="tb-ds" onclick="toggleMetric('ds')">Dist/Stroke</button>
+          </div>
+          <div id="race-metrics" class="metric-grid"></div>
+          <div class="card">
+            <div class="card-title" id="race-chart-title">Performance over distance</div>
+            <div id="race-legend" class="legend" style="margin-bottom:10px"></div>
+            <div class="scale-controls">
+              <span class="ctrl-label">Split/Speed axis window:</span>
+              <span class="ctrl-label" style="color:var(--muted)">Avg &minus;</span>
+              <input type="number" id="scale-below" value="15" min="1" max="120" style="width:52px" onchange="updateScaleWindow()">
+              <span class="ctrl-label" style="color:var(--muted)">s &nbsp; Avg +</span>
+              <input type="number" id="scale-above" value="5" min="1" max="120" style="width:52px" onchange="updateScaleWindow()">
+              <span class="ctrl-label" style="color:var(--muted)">s</span>
+              <button class="tbtn" onclick="resetScaleWindow()" style="margin-left:4px;padding:4px 10px;font-size:10px">Reset</button>
+            </div>
+            <div class="chart-wrap" style="height:380px;margin-top:10px">
+              <canvas id="race-chart" role="img" aria-label="Rowing metric over race distance"></canvas>
+            </div>
+          </div>
+          <button class="ai-btn" onclick="getAI('race')">
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            AI coaching analysis
+          </button>
+          <div class="ai-box" id="ai-race">
+            <div class="ai-header">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <span class="ai-badge">AI Coaching Analysis — Genazzano Rowing</span>
+            </div>
+            <div class="ai-text" id="ai-race-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compare -->
+    <div id="section-compare" class="section">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Race Comparison</div>
+          <div class="gold-line"></div>
+          <div class="page-sub">Head-to-head performance analysis</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="controls">
+          <span class="ctrl-label">Race A:</span>
+          <select id="cmp-a" onchange="renderCompare()"></select>
+          <span class="ctrl-label">Race B:</span>
+          <select id="cmp-b" onchange="renderCompare()"></select>
+            <span class="ctrl-label">Display:</span>
+            <button class="tbtn active" id="ctb-split" onclick="toggleCmpMetric('split')">Split</button>
+            <button class="tbtn" id="ctb-speed" onclick="toggleCmpMetric('speed')">Speed</button>
+            <button class="tbtn" id="ctb-rate" onclick="toggleCmpMetric('rate')">Rate</button>
+            <button class="tbtn" id="ctb-ds" onclick="toggleCmpMetric('ds')">Dist/Stroke</button>
+        </div>
+        <div id="cmp-cols" class="cmp-grid"></div>
+        <div class="card">
+          <div class="card-title" id="cmp-chart-title">Race comparison</div>
+          <div id="cmp-legend" class="legend" style="margin-bottom:10px"></div>
+          <div class="scale-controls">
+            <span class="ctrl-label">Split/Speed axis window:</span>
+            <span class="ctrl-label" style="color:var(--muted)">Avg &minus;</span>
+            <input type="number" id="cmp-scale-below" value="15" min="1" max="120" style="width:52px" onchange="updateCmpScaleWindow()">
+            <span class="ctrl-label" style="color:var(--muted)">s &nbsp; Avg +</span>
+            <input type="number" id="cmp-scale-above" value="5" min="1" max="120" style="width:52px" onchange="updateCmpScaleWindow()">
+            <span class="ctrl-label" style="color:var(--muted)">s</span>
+            <button class="tbtn" onclick="resetCmpScaleWindow()" style="margin-left:4px;padding:4px 10px;font-size:10px">Reset</button>
+          </div>
+          <div class="chart-wrap" style="height:380px;margin-top:10px">
+            <canvas id="cmp-chart" role="img" aria-label="Race comparison chart"></canvas>
+          </div>
+        </div>
+        <button class="ai-btn" onclick="getAI('compare')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          AI comparison analysis
+        </button>
+        <div class="ai-box" id="ai-compare">
+          <div class="ai-header">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span class="ai-badge">AI Race Comparison — Genazzano Rowing</span>
+          </div>
+          <div class="ai-text" id="ai-compare-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Training Log -->
+    <div id="section-training" class="section">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Training Log</div>
+          <div class="gold-line"></div>
+          <div class="page-sub">All sessions — races and training</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="card">
+          <div class="card-title">All sessions</div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Session</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Distance</th>
+                <th>Time</th>
+                <th>Avg Split</th>
+                <th>Avg Rate</th>
+                <th>Strokes</th>
+              </tr>
+            </thead>
+            <tbody id="training-rows"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-title">Average split — all sessions (lower = faster)</div>
+          <div class="chart-wrap" style="height:240px">
+            <canvas id="training-chart" role="img" aria-label="Training split trend across sessions"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── CONFIG — replace with your deployed Apps Script URL ──────
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxVhlyF6Np_94HZNwE6ONQ1QtJoaQmvRZxygRDxRCEufGYn6KVEdb3Qm_yfZ0hJZ89l/exec';
+// ────────────────────────────────────────────────────────────
+
+var allSessions   = [];
+var raceSessions  = [];
+var activeMetrics = { split: true, speed: false, rate: false, ds: false };
+var activeCmpMetrics = { split: true, speed: false, rate: false, ds: false };
+var raceChart     = null;
+var cmpChart      = null;
+var trainChart    = null;
+
+// Metric config
+// Axes: split=yLeft, speed=yLeft2, rate=yRight, ds=yRight2
+var METRIC_CFG = {
+  split: { label: 'Split /500m',     color: '#cc9933', axis: 'yLeft',   reverse: true,  fmt: function(v){ return fmtSplit(v); } },
+  speed: { label: 'Speed (m/s)',      color: '#00b395', axis: 'yLeft2',  reverse: false, fmt: function(v){ return parseFloat(v).toFixed(2); } },
+  rate:  { label: 'Rate (SPM)',       color: '#E92B55', axis: 'yRight',  reverse: false, fmt: function(v){ return parseFloat(v).toFixed(1); } },
+  ds:    { label: 'Dist/Stroke (m)',  color: '#a09f9f', axis: 'yRight2', reverse: false, fmt: function(v){ return parseFloat(v).toFixed(2); } }
+};
+
+// Scale window params (in split-seconds; speed derived proportionally)
+var scaleWindow = { below: 15, above: 5 };
+
+// Convert split seconds to m/s speed
+function splitToSpeed(secs) {
+  if (!secs || secs <= 0) return null;
+  return 500 / secs;
+}
+
+function getAxisId(metric, activeMap) {
+  // If the metric's own axis has nothing else, fall back gracefully
+  return METRIC_CFG[metric].axis;
+}
+
+// ── helpers ──────────────────────────────────────────────────
+function parseSplit(s) {
+  if (!s || s === '---') return null;
+  s = s.replace('(', '').replace(')', '');
+  var p = s.split(':');
+  if (p.length === 3) return parseFloat(p[0])*3600 + parseFloat(p[1])*60 + parseFloat(p[2]);
+  if (p.length === 2) return parseFloat(p[0])*60 + parseFloat(p[1]);
+  return null;
+}
+function fmtSplit(secs) {
+  if (secs == null || isNaN(secs)) return '---';
+  var m = Math.floor(secs / 60);
+  var s = (secs % 60);
+  var sf = s < 10 ? '0' + s.toFixed(1) : s.toFixed(1);
+  return m + ':' + sf;
+}
+function fmtDate(str) {
+  if (!str) return '---';
+  var parts = str.split(' ')[0].split('/');
+  if (parts.length === 3) {
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var m = parseInt(parts[0]) - 1;
+    return parts[1] + ' ' + months[m] + ' ' + parts[2];
+  }
+  return str;
+}
+function smooth(arr, w) {
+  w = w || 2;
+  return arr.map(function(v, i, a) {
+    var sl = [];
+    for (var j = Math.max(0, i-w); j <= Math.min(a.length-1, i+w); j++) {
+      if (a[j] != null) sl.push(a[j]);
+    }
+    return sl.length ? sl.reduce(function(s,x){return s+x;}, 0) / sl.length : null;
+  });
+}
+function downsample(arr, max) {
+  max = max || 120;
+  if (arr.length <= max) return arr;
+  var step = Math.ceil(arr.length / max);
+  return arr.filter(function(_, i) { return i % step === 0; });
+}
+function getMetricVals(strokes, metric) {
+  return strokes.map(function(s) {
+    if (metric === 'split') return parseSplit(s.sp);
+    if (metric === 'speed') return s.v;
+    if (metric === 'rate')  return s.r;
+    if (metric === 'ds')    return s.ds;
+    return null;
+  });
+}
+
+// ── status ───────────────────────────────────────────────────
+function setStatus(state, ts) {
+  var dot = document.getElementById('status-dot');
+  var txt = document.getElementById('status-text');
+  dot.className = 'status-dot' + (state === 'live' ? ' live' : state === 'error' ? ' error' : '');
+  if (state === 'live' && ts) {
+    var d = new Date(ts);
+    txt.textContent = 'Synced ' + d.toLocaleTimeString('en-AU', {hour:'2-digit', minute:'2-digit'});
+  } else if (state === 'error') {
+    txt.textContent = 'Connection error';
+  } else {
+    txt.textContent = 'Loading...';
+  }
+}
+
+// ── load data ────────────────────────────────────────────────
+function loadData() {
+  setStatus('loading');
+  // Use JSONP to avoid CORS issues with Apps Script
+  window._rowingDataCallback = function(j) {
+    try {
+      if (j.status !== 'ok') throw new Error(j.message || 'Error');
+      allSessions  = j.sessions || [];
+      raceSessions = allSessions.filter(function(s) { return s.isRace; });
+      setStatus('live', j.generated);
+      populateSelects();
+      renderRace();
+      renderCompare();
+      renderTraining();
+      document.getElementById('race-loading').style.display = 'none';
+      document.getElementById('race-body').style.display = 'block';
+    } catch(e) {
+      setStatus('error');
+      document.getElementById('race-loading').innerHTML =
+        '<div style="text-align:center;color:var(--pink)">' +
+        '<div style="font-size:28px;margin-bottom:10px">&#9888;</div>' +
+        '<div style="font-size:14px">Could not load session data</div>' +
+        '<div style="font-size:11px;color:var(--muted);margin-top:6px">' + e.message + '</div>' +
+        '</div>';
+    }
+  };
+  // Inject script tag for JSONP
+  var script = document.createElement('script');
+  script.onerror = function() {
+    setStatus('error');
+    document.getElementById('race-loading').innerHTML =
+      '<div style="text-align:center;color:var(--pink)">' +
+      '<div style="font-size:28px;margin-bottom:10px">&#9888;</div>' +
+      '<div style="font-size:14px">Could not reach Apps Script</div>' +
+      '<div style="font-size:11px;color:var(--muted);margin-top:6px">Check the URL is deployed and set to Anyone</div>' +
+      '</div>';
+  };
+  script.src = APPS_SCRIPT_URL + '?callback=_rowingDataCallback';
+  document.head.appendChild(script);
+}
+
+function populateSelects() {
+  // Race select: all sessions
+  var raceEl = document.getElementById('race-select');
+  raceEl.innerHTML = '';
+  allSessions.forEach(function(s) {
+    var opt = document.createElement('option');
+    opt.value = s.name;
+    opt.textContent = s.name;
+    raceEl.appendChild(opt);
+  });
+
+  // Compare selects: race sessions only (fall back to all if <2 races)
+  var list = raceSessions.length >= 2 ? raceSessions : allSessions;
+  ['cmp-a', 'cmp-b'].forEach(function(id, idx) {
+    var el = document.getElementById(id);
+    el.innerHTML = '';
+    list.forEach(function(s, i) {
+      var opt = document.createElement('option');
+      opt.value = s.name;
+      opt.textContent = s.name;
+      if (i === idx) opt.selected = true;
+      el.appendChild(opt);
+    });
+  });
+}
+
+// ── helpers: axis range ──────────────────────────────────────
+function axisRange(vals, pad, reverse) {
+  var clean = vals.filter(function(v){ return v != null && !isNaN(v); });
+  if (!clean.length) return {};
+  var mn = Math.min.apply(null, clean);
+  var mx = Math.max.apply(null, clean);
+  return reverse
+    ? { min: mn - pad, max: mx + pad }
+    : { min: mn - pad, max: mx + pad };
+}
+
+// ── helpers: 250m x-axis labels ─────────────────────────────
+function make250Labels(strokes) {
+  if (!strokes.length) return { labels:[], indices:[] };
+  var maxDist = strokes[strokes.length-1].d;
+  var ticks = [];
+  for (var d = 0; d <= maxDist + 249; d += 250) {
+    if (d <= maxDist) ticks.push(d);
+  }
+  // For each tick, find the stroke index closest to that distance
+  var labels = [], indices = [];
+  ticks.forEach(function(t) {
+    var best = 0, bestDiff = Infinity;
+    for (var i = 0; i < strokes.length; i++) {
+      var diff = Math.abs(strokes[i].d - t);
+      if (diff < bestDiff) { bestDiff = diff; best = i; }
+    }
+    labels.push(t);
+    indices.push(best);
+  });
+  return { labels: labels, indices: indices };
+}
+
+function buildXLabels(strokes) {
+  // Returns array of length strokes.length; only 250m marks get a label, rest ''
+  var info = make250Labels(strokes);
+  var result = strokes.map(function(){ return ''; });
+  info.indices.forEach(function(idx, i){ result[idx] = info.labels[i] + 'm'; });
+  return result;
+}
+
+// ── helpers: build datasets for a session ────────────────────
+function buildDatasets(strokes, activeMap, namePrefix, dashed) {
+  var ds = [];
+  ['split','speed','rate','ds'].forEach(function(m) {
+    if (!activeMap[m]) return;
+    var cfg = METRIC_CFG[m];
+    var raw = smooth(getMetricVals(strokes, m), 2);
+    var color = cfg.color;
+    ds.push({
+      label: namePrefix ? namePrefix + ' — ' + cfg.label : cfg.label,
+      data: raw,
+      borderColor: color,
+      backgroundColor: 'transparent',
+      fill: false,
+      tension: 0.4,
+      pointRadius: 0,
+      borderWidth: 2,
+      borderDash: dashed ? [5,4] : [],
+      yAxisID: METRIC_CFG[m].axis
+    });
+  });
+  return ds;
+}
+
+// ── helpers: compute average split from strokes ──────────────
+function avgSplitFromStrokes(strokes) {
+  var vals = strokes.map(function(s){ return parseSplit(s.sp); }).filter(function(v){ return v != null && !isNaN(v) && v > 0 && v < 600; });
+  if (!vals.length) return null;
+  return vals.reduce(function(a,b){return a+b;},0) / vals.length;
+}
+
+// ── helpers: build scales ────────────────────────────────────
+function buildScales(allDatasets, strokes, activeMap, windowParam) {
+  var win = windowParam || scaleWindow;
+  var avgSp = avgSplitFromStrokes(strokes);
+
+  function scaleForMetric(m, position, showGrid) {
+    if (!activeMap[m]) return null;
+    var cfg = METRIC_CFG[m];
+    var axisData = [];
+    allDatasets.forEach(function(ds){
+      if (ds.yAxisID === cfg.axis) {
+        axisData = axisData.concat(ds.data.filter(function(v){return v!=null&&!isNaN(v);}));
+      }
+    });
+    if (!axisData.length) return null;
+
+    var mn, mx;
+    if (m === 'split' && avgSp) {
+      // Average-based window
+      mn = avgSp - win.below;
+      mx = avgSp + win.above;
+    } else if (m === 'speed' && avgSp) {
+      // Derive from split window proportionally
+      // avgSpeed = 500/avgSp; speed range mirrors split range
+      var avgSpd = splitToSpeed(avgSp);
+      var spdAtFast = splitToSpeed(avgSp - win.below); // faster = higher speed
+      var spdAtSlow = splitToSpeed(avgSp + win.above); // slower = lower speed
+      mn = spdAtSlow !== null ? spdAtSlow - 0.02 : avgSpd - 0.5;
+      mx = spdAtFast !== null ? spdAtFast + 0.02 : avgSpd + 0.5;
+    } else {
+      // Rate and Dist/Stroke: tight auto-scale from actual data
+      var dataMn = Math.min.apply(null, axisData);
+      var dataMx = Math.max.apply(null, axisData);
+      var pad = (m === 'rate') ? 2 : 0.3;
+      mn = dataMn - pad;
+      mx = dataMx + pad;
+    }
+
+    return {
+      position: position,
+      reverse: cfg.reverse,
+      min: mn, max: mx,
+      ticks: {
+        color:'#8aaccf', font:{size:10},
+        callback: function(v){ return cfg.fmt(v); }
+      },
+      grid: showGrid ? {color:'rgba(255,255,255,0.04)'} : {display:false}
+    };
+  }
+
+  var scales = {
+    x: {
+      ticks: {
+        color:'#8aaccf', font:{size:10},
+        callback: function(v, i) {
+          var lbl = xLabels[i];
+          return (lbl && lbl !== '') ? lbl : null;
+        },
+        maxRotation: 0,
+        autoSkip: false
+      },
+      grid: { color:'rgba(255,255,255,0.04)' }
+    }
+  };
+
+  // yLeft = split (left, reversed)
+  var splitScale = scaleForMetric('split', 'left', true);
+  if (splitScale) scales['yLeft'] = splitScale;
+
+  // yLeft2 = speed (left, not reversed) — only show if split not active to avoid crowding
+  var speedScale = scaleForMetric('speed', activeMap.split ? 'right' : 'left', !activeMap.split);
+  if (speedScale) { speedScale.position = activeMap.split ? 'right' : 'left'; scales['yLeft2'] = speedScale; }
+
+  // yRight = rate
+  var rateScale = scaleForMetric('rate', 'right', false);
+  if (rateScale) {
+    // If speed already on right, stack rate on left
+    if (activeMap.speed && activeMap.split) { rateScale.position = 'left'; rateScale.grid = {display:false}; }
+    scales['yRight'] = rateScale;
+  }
+
+  // yRight2 = dist/stroke
+  var dsScale = scaleForMetric('ds', 'right', false);
+  if (dsScale) {
+    if (activeMap.speed && activeMap.split) { dsScale.position = 'right'; }
+    scales['yRight2'] = dsScale;
+  }
+
+  return scales;
+}
+
+// global so callback can access
+var xLabels = [];
+
+// ── scale window controls ────────────────────────────────────
+function updateScaleWindow() {
+  var b = parseInt(document.getElementById('scale-below').value) || 15;
+  var a = parseInt(document.getElementById('scale-above').value) || 5;
+  scaleWindow.below = b;
+  scaleWindow.above = a;
+  renderRace();
+}
+function resetScaleWindow() {
+  scaleWindow.below = 15; scaleWindow.above = 5;
+  document.getElementById('scale-below').value = 15;
+  document.getElementById('scale-above').value = 5;
+  renderRace();
+}
+var cmpScaleWindow = { below: 15, above: 5 };
+function updateCmpScaleWindow() {
+  var b = parseInt(document.getElementById('cmp-scale-below').value) || 15;
+  var a = parseInt(document.getElementById('cmp-scale-above').value) || 5;
+  cmpScaleWindow.below = b;
+  cmpScaleWindow.above = a;
+  renderCompare();
+}
+function resetCmpScaleWindow() {
+  cmpScaleWindow.below = 15; cmpScaleWindow.above = 5;
+  document.getElementById('cmp-scale-below').value = 15;
+  document.getElementById('cmp-scale-above').value = 5;
+  renderCompare();
+}
+
+// ── race view ────────────────────────────────────────────────
+function toggleMetric(m) {
+  // Must keep at least one active
+  var nowOn = !activeMetrics[m];
+  var anyOther = false;
+  ['split','speed','rate','ds'].forEach(function(k){ if (k!==m && activeMetrics[k]) anyOther=true; });
+  if (!nowOn && !anyOther) return; // prevent deselecting last
+  activeMetrics[m] = nowOn;
+  document.getElementById('tb-'+m).className = 'tbtn' + (nowOn ? ' active' : '');
+  renderRace();
+}
+
+function renderRace() {
+  if (!allSessions.length) return;
+  var name = document.getElementById('race-select').value;
+  if (!name) return;
+  var sess = null;
+  for (var i = 0; i < allSessions.length; i++) {
+    if (allSessions[i].name === name) { sess = allSessions[i]; break; }
+  }
+  if (!sess) return;
+
+  var sm = sess.summary || {};
+  document.getElementById('race-metrics').innerHTML =
+    '<div class="metric-card"><div class="metric-label">Distance</div><div class="metric-value">' + (sm.totalDistGPS ? sm.totalDistGPS.toFixed(0) : '---') + '</div><div class="metric-unit">metres (GPS)</div></div>' +
+    '<div class="metric-card"><div class="metric-label">Avg Split</div><div class="metric-value" style="font-size:18px">' + fmtSplit(parseSplit(sm.avgSplitGPS)) + '</div><div class="metric-unit">per 500m</div></div>' +
+    '<div class="metric-card"><div class="metric-label">Total Time</div><div class="metric-value" style="font-size:16px">' + (sm.totalTime || '---') + '</div><div class="metric-unit">elapsed</div></div>' +
+    '<div class="metric-card"><div class="metric-label">Avg Rate</div><div class="metric-value">' + (sm.avgStrokeRate ? sm.avgStrokeRate.toFixed(1) : '---') + '</div><div class="metric-unit">strokes / min</div></div>' +
+    '<div class="metric-card"><div class="metric-label">Strokes</div><div class="metric-value">' + (sm.totalStrokes || '---') + '</div><div class="metric-unit">total</div></div>' +
+    '<div class="metric-card"><div class="metric-label">Dist / Stroke</div><div class="metric-value">' + (sm.distPerStrokeGPS ? sm.distPerStrokeGPS.toFixed(1) : '---') + '</div><div class="metric-unit">metres</div></div>';
+
+  var strokes = sess.strokes || [];
+  xLabels = buildXLabels(strokes);
+  var datasets = buildDatasets(strokes, activeMetrics, '', false);
+  var scales   = buildScales(datasets, strokes, activeMetrics, scaleWindow);
+
+  // Build legend
+  var legendHtml = '';
+  ['split','speed','rate','ds'].forEach(function(m){
+    if (!activeMetrics[m]) return;
+    var cfg = METRIC_CFG[m];
+    legendHtml += '<div class="legend-item"><div class="legend-line" style="background:'+cfg.color+'"></div><span>'+cfg.label+'</span></div>';
+  });
+  document.getElementById('race-legend').innerHTML = legendHtml;
+  document.getElementById('race-chart-title').textContent = name;
+
+  if (raceChart) raceChart.destroy();
+  var ctx = document.getElementById('race-chart').getContext('2d');
+  raceChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: xLabels, datasets: datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: scales
+    }
+  });
+}
+
+// ── compare ──────────────────────────────────────────────────
+function toggleCmpMetric(m) {
+  var nowOn = !activeCmpMetrics[m];
+  var anyOther = false;
+  ['split','speed','rate','ds'].forEach(function(k){ if (k!==m && activeCmpMetrics[k]) anyOther=true; });
+  if (!nowOn && !anyOther) return;
+  activeCmpMetrics[m] = nowOn;
+  document.getElementById('ctb-'+m).className = 'tbtn' + (nowOn ? ' active' : '');
+  renderCompare();
+}
+
+function renderCompare() {
+  if (!allSessions.length) return;
+  var nameA = document.getElementById('cmp-a').value;
+  var nameB = document.getElementById('cmp-b').value;
+  if (!nameA || !nameB) return;
+
+  var sA = null, sB = null;
+  for (var i = 0; i < allSessions.length; i++) {
+    if (allSessions[i].name === nameA) sA = allSessions[i];
+    if (allSessions[i].name === nameB) sB = allSessions[i];
+  }
+  if (!sA || !sB) return;
+
+  var smA = sA.summary || {}, smB = sB.summary || {};
+  var spA = parseSplit(smA.avgSplitGPS), spB = parseSplit(smB.avgSplitGPS);
+  var diff = (spA && spB) ? spB - spA : null;
+  var diffClass = diff === null ? 'same' : diff < 0 ? 'better' : 'worse';
+  var diffStr = diff === null ? '—' : (diff > 0 ? '+' : '') + fmtSplit(Math.abs(diff));
+
+  document.getElementById('cmp-cols').innerHTML =
+    '<div class="cmp-col col-a">' +
+      '<div class="cmp-col-label">Race A</div>' +
+      '<div class="cmp-col-name">' + nameA + '</div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Distance</span><span class="cmp-stat-val">' + (smA.totalDistGPS ? smA.totalDistGPS.toFixed(0)+'m' : '---') + '</span></div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Total time</span><span class="cmp-stat-val">' + (smA.totalTime||'---') + '</span></div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Avg split</span><span class="cmp-stat-val" style="color:var(--teal)">' + fmtSplit(spA) + '</span></div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Avg rate</span><span class="cmp-stat-val">' + (smA.avgStrokeRate ? smA.avgStrokeRate.toFixed(1)+' SPM' : '---') + '</span></div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Strokes</span><span class="cmp-stat-val">' + (smA.totalStrokes||'---') + '</span></div>' +
+    '</div>' +
+    '<div class="cmp-col col-b">' +
+      '<div class="cmp-col-label">Race B &nbsp;<span class="diff ' + diffClass + '">' + diffStr + '</span></div>' +
+      '<div class="cmp-col-name">' + nameB + '</div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Distance</span><span class="cmp-stat-val">' + (smB.totalDistGPS ? smB.totalDistGPS.toFixed(0)+'m' : '---') + '</span></div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Total time</span><span class="cmp-stat-val">' + (smB.totalTime||'---') + '</span></div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Avg split</span><span class="cmp-stat-val" style="color:var(--pink)">' + fmtSplit(spB) + '</span></div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Avg rate</span><span class="cmp-stat-val">' + (smB.avgStrokeRate ? smB.avgStrokeRate.toFixed(1)+' SPM' : '---') + '</span></div>' +
+      '<div class="cmp-stat"><span class="cmp-stat-label">Strokes</span><span class="cmp-stat-val">' + (smB.totalStrokes||'---') + '</span></div>' +
+    '</div>';
+
+  // Use the longer race for x-axis labels
+  var strokesA = sA.strokes || [];
+  var strokesB = sB.strokes || [];
+  var xBase = strokesA.length >= strokesB.length ? strokesA : strokesB;
+  xLabels = buildXLabels(xBase);
+
+  // Build datasets — Race A solid, Race B dashed
+  // We need both to share the same x-label length; pad shorter arrays with nulls
+  var dsA = buildDatasets(strokesA, activeCmpMetrics, nameA, false);
+  var dsB = buildDatasets(strokesB, activeCmpMetrics, nameB, true);
+
+  // Pad shorter datasets to match xLabels length
+  var targetLen = xLabels.length;
+  function padDs(ds) {
+    ds.forEach(function(d){
+      while (d.data.length < targetLen) d.data.push(null);
+    });
+    return ds;
+  }
+  padDs(dsA); padDs(dsB);
+
+  // Override colours: Race B gets slightly different shades
+  var CMP_COLORS_B = { split:'#f5a623', speed:'#00e0bc', rate:'#ff6b8a', ds:'#c8c7c7' };
+  dsB.forEach(function(d){
+    ['split','speed','rate','ds'].forEach(function(m){
+      if (d.label.indexOf(METRIC_CFG[m].label) >= 0) d.borderColor = CMP_COLORS_B[m];
+    });
+  });
+
+  var allDs = dsA.concat(dsB);
+  var scales = buildScales(allDs, xBase, activeCmpMetrics, cmpScaleWindow);
+
+  // Build legend
+  var legendHtml = '';
+  ['split','speed','rate','ds'].forEach(function(m){
+    if (!activeCmpMetrics[m]) return;
+    var cfg = METRIC_CFG[m];
+    legendHtml +=
+      '<div class="legend-item"><div class="legend-line" style="background:'+cfg.color+'"></div><span style="color:var(--teal)">'+nameA+'</span> <span style="color:var(--muted)">'+cfg.label+'</span></div>' +
+      '<div class="legend-item"><div class="legend-line" style="border-top:2px dashed '+CMP_COLORS_B[m]+';background:none"></div><span style="color:var(--pink)">'+nameB+'</span></div>';
+  });
+  document.getElementById('cmp-legend').innerHTML = legendHtml;
+  document.getElementById('cmp-chart-title').textContent = nameA + ' vs ' + nameB;
+
+  if (cmpChart) cmpChart.destroy();
+  var ctx2 = document.getElementById('cmp-chart').getContext('2d');
+  cmpChart = new Chart(ctx2, {
+    type: 'line',
+    data: { labels: xLabels, datasets: allDs },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: scales
+    }
+  });
+}
+
+// ── training ─────────────────────────────────────────────────
+function renderTraining() {
+  if (!allSessions.length) return;
+  var rows = document.getElementById('training-rows');
+  rows.innerHTML = allSessions.map(function(s) {
+    var sm = s.summary || {};
+    var sp = parseSplit(sm.avgSplitGPS);
+    var badge = s.isRace
+      ? '<span class="badge badge-race">Race</span>'
+      : '<span class="badge badge-training">Training</span>';
+    return '<tr>' +
+      '<td>' + s.name + '</td>' +
+      '<td style="color:var(--muted)">' + fmtDate(s.startTime) + '</td>' +
+      '<td>' + badge + '</td>' +
+      '<td>' + (sm.totalDistGPS ? sm.totalDistGPS.toFixed(0)+'m' : '---') + '</td>' +
+      '<td>' + (sm.totalTime||'---') + '</td>' +
+      '<td style="color:var(--gold)">' + fmtSplit(sp) + '</td>' +
+      '<td>' + (sm.avgStrokeRate ? sm.avgStrokeRate.toFixed(1)+' SPM' : '---') + '</td>' +
+      '<td>' + (sm.totalStrokes||'---') + '</td>' +
+    '</tr>';
+  }).join('');
+
+  var valid = allSessions.filter(function(s) { return s.summary && s.summary.avgSplitGPS; });
+  var tLabels = valid.map(function(s) { return s.name.length > 16 ? s.name.slice(0,14)+'…' : s.name; });
+  var tVals   = valid.map(function(s) { return parseSplit(s.summary.avgSplitGPS); });
+  var tColors = valid.map(function(s) { return s.isRace ? '#cc9933' : '#00b395'; });
+
+  if (trainChart) trainChart.destroy();
+  var ctx3 = document.getElementById('training-chart').getContext('2d');
+  trainChart = new Chart(ctx3, {
+    type: 'bar',
+    data: {
+      labels: tLabels,
+      datasets: [{ label:'Avg split', data:tVals, backgroundColor:tColors, borderRadius:5, borderSkipped:false }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend:{ display:false } },
+      scales: {
+        x: { ticks:{color:'#8aaccf',font:{size:10},maxRotation:35}, grid:{display:false} },
+        y: { reverse:true, ticks:{color:'#8aaccf',font:{size:10},callback:function(v){return fmtSplit(v);}}, grid:{color:'rgba(255,255,255,0.04)'} }
+      }
+    }
+  });
+}
+
+// ── AI ───────────────────────────────────────────────────────
+function getAI(mode) {
+  var box  = document.getElementById('ai-' + mode);
+  var txt  = document.getElementById('ai-' + mode + '-text');
+  box.style.display = 'block';
+  txt.textContent = 'Analysing your race data…';
+
+  var prompt = '';
+  if (mode === 'race') {
+    var name = document.getElementById('race-select').value;
+    var sess = null;
+    for (var i = 0; i < allSessions.length; i++) { if (allSessions[i].name === name) { sess = allSessions[i]; break; } }
+    var sm = sess.summary || {};
+    var sp = (sess.strokes||[]).map(function(s){return parseSplit(s.sp);}).filter(function(v){return v != null;});
+    function avg(arr) { return arr.length ? arr.reduce(function(a,b){return a+b;},0)/arr.length : null; }
+    var startSp = sp.slice(0,10), midSp = sp.slice(Math.floor(sp.length/2)-5, Math.floor(sp.length/2)+5), endSp = sp.slice(-10);
+    prompt = 'You are an expert rowing coach at Genazzano FCJ College, a girls school in Melbourne. Analyse this SpeedCoach GPS race data and provide 3-4 specific, actionable coaching insights. Use rowing-specific language.\n\n' +
+      'Race: ' + name + '\n' +
+      'Total distance: ' + (sm.totalDistGPS ? sm.totalDistGPS.toFixed(0) : '?') + 'm\n' +
+      'Total time: ' + (sm.totalTime||'?') + '\n' +
+      'Avg split: ' + fmtSplit(parseSplit(sm.avgSplitGPS)) + ' /500m\n' +
+      'Avg stroke rate: ' + (sm.avgStrokeRate ? sm.avgStrokeRate.toFixed(1) : '?') + ' SPM\n' +
+      'Total strokes: ' + (sm.totalStrokes||'?') + '\n' +
+      'Distance/stroke: ' + (sm.distPerStrokeGPS ? sm.distPerStrokeGPS.toFixed(1) : '?') + 'm\n\n' +
+      'Pacing (split in seconds per 500m):\n' +
+      '- First 10 strokes avg: ' + fmtSplit(avg(startSp)) + '\n' +
+      '- Mid-race avg: ' + fmtSplit(avg(midSp)) + '\n' +
+      '- Final 10 strokes avg: ' + fmtSplit(avg(endSp)) + '\n\n' +
+      'Cover: pacing strategy (positive/negative split?), stroke efficiency, key strengths, and 1-2 specific areas to improve. Write in short paragraphs, no bullet points.';
+
+  } else {
+    var nameA = document.getElementById('cmp-a').value;
+    var nameB = document.getElementById('cmp-b').value;
+    var sA = null, sB = null;
+    for (var i = 0; i < allSessions.length; i++) {
+      if (allSessions[i].name === nameA) sA = allSessions[i];
+      if (allSessions[i].name === nameB) sB = allSessions[i];
+    }
+    var smA = sA.summary||{}, smB = sB.summary||{};
+    prompt = 'You are an expert rowing coach at Genazzano FCJ College. Compare these two race performances and give specific coaching feedback.\n\n' +
+      'Race 1: ' + nameA + '\n' +
+      '- Avg split: ' + fmtSplit(parseSplit(smA.avgSplitGPS)) + ' /500m\n' +
+      '- Avg rate: ' + (smA.avgStrokeRate ? smA.avgStrokeRate.toFixed(1) : '?') + ' SPM\n' +
+      '- Distance/stroke: ' + (smA.distPerStrokeGPS ? smA.distPerStrokeGPS.toFixed(1) : '?') + 'm\n' +
+      '- Total strokes: ' + (smA.totalStrokes||'?') + '\n\n' +
+      'Race 2: ' + nameB + '\n' +
+      '- Avg split: ' + fmtSplit(parseSplit(smB.avgSplitGPS)) + ' /500m\n' +
+      '- Avg rate: ' + (smB.avgStrokeRate ? smB.avgStrokeRate.toFixed(1) : '?') + ' SPM\n' +
+      '- Distance/stroke: ' + (smB.distPerStrokeGPS ? smB.distPerStrokeGPS.toFixed(1) : '?') + 'm\n' +
+      '- Total strokes: ' + (smB.totalStrokes||'?') + '\n\n' +
+      'Identify: what improved, what regressed, and 2 specific recommendations for the next race. Short paragraphs, no bullet points.';
+  }
+
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{ role:'user', content: prompt }]
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(j) {
+    var content = j.content && j.content[0] ? j.content[0].text : 'No response received.';
+    txt.textContent = content;
+  })
+  .catch(function() {
+    txt.textContent = 'Could not connect to AI. Please try again.';
+  });
+}
+
+// ── nav ──────────────────────────────────────────────────────
+function showSection(id, btn) {
+  document.querySelectorAll('.section').forEach(function(el) { el.classList.remove('active'); });
+  document.querySelectorAll('.nav-btn').forEach(function(el) { el.classList.remove('active'); });
+  document.getElementById('section-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+// ── init ─────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
